@@ -23,6 +23,7 @@ depends:
   - osal_aos: rel_3.3.0
   - mbedtls: rel_3.3.0
   - cjson: rel_3.3.0
+  - lwip: rel_3.3.0
 
 ## 第四部分：编译连接信息
 # build_config:                            # <可选项> 编译配置项

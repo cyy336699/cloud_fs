@@ -1,0 +1,4 @@
+{
+    "serialport": "/dev/ttyUSB0        ",
+    "baudrate": "1500000"
+}

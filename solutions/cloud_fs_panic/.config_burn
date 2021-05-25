@@ -1,0 +1,9 @@
+{
+    "chip_haas1000": {
+        "serialport": "/dev/ttyUSB0",
+        "baudrate": "1500000",
+        "binfile": [
+            "/home/cuiyy/\u6587\u4ef6\u7cfb\u7edf/solutions/test_helloworld_demo/out/test_helloworld_demo@haas100.bin"
+        ]
+    }
+}
