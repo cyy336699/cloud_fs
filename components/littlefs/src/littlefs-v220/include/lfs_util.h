@@ -73,7 +73,7 @@ extern "C"
 #define LFS_WARN(...)
 #endif
 
-#ifndef LFS_NO_ERROR
+#ifdef LFS_NO_ERROR
 #define LFS_ERROR_(fmt, ...) \
     printf("%s:%d:error: " fmt "%s\n", __FILE__, __LINE__, __VA_ARGS__)
 #define LFS_ERROR(...) LFS_ERROR_(__VA_ARGS__, "")

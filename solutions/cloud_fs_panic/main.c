@@ -9,6 +9,7 @@
 #include <k_api.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <aos/vfs.h>
 
 //添加网络
 #include "netmgr.h"
@@ -23,13 +24,16 @@ int application_start(int argc, char *argv[])
     event_service_init(NULL);
     netmgr_service_init(NULL); //添加网络
 
+    aos_rmdir("/data/cloud");
+    aos_mkdir("/data/cloud");
+
     printf("Everything inits well!\r\n");
-    printf("**************************************************************");
-    printf("\n");
-    printf("                      welcome to our Cloud File System!\n");
-    printf("                                                  --panic\n");
-    printf("\n");
-    printf("**************************************************************");
+    printf("**************************************************************\r\n");
+    printf("\r\n");
+    printf("               Welcome to Our Cloud File System!\r\n");
+    printf("                                      --panic\r\n");
+    printf("\r\n");
+    printf("**************************************************************\r\n");
 
     while(1) {
         aos_msleep(1000);

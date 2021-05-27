@@ -107,7 +107,7 @@ depends:
 source_file:
   - "maintask.c"
   - "main.c"
-  - "cloud_fs_app/*.c"
+  - "cloud_fs_app/*.cpp"
   - "cloud_fs_oss/*.cpp"
 
 ## 第五部分：配置信息

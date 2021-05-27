@@ -126,7 +126,7 @@ int cloud_fs_oss_deleteBucket(char* bucketName)
  * @param bucketName: If it is NULL, it defaults to Buckets
  * @return 1 for ok, 0 for error.
  */
-int cloud_fs_oss_uploadFile(char * localfilepath, char * bucketName)
+int cloud_fs_oss_uploadFile(char * localfilepath, char * bucketName, char * filename)
 {
     std::string BucketName;
     std::string ObjectName ;
@@ -148,7 +148,7 @@ int cloud_fs_oss_uploadFile(char * localfilepath, char * bucketName)
     }
 
     memset(file_path,0,1024);
-    pfile_path = localfilepath;
+    pfile_path = filename;
     strncpy(file_path,&pfile_path[1],strlen(pfile_path)-1);
     ObjectName = file_path;
 
@@ -185,7 +185,7 @@ int cloud_fs_oss_uploadFile(char * localfilepath, char * bucketName)
  * @param fileName: the name of file which to save the content
  * @return 1 for ok, 0 for error.
  */
-int cloud_fs_oss_downloadFile(char * filepath, char * bucketName, char * fileName)
+int cloud_fs_oss_downloadFile(char * filepath, char * bucketName, char * content)
 {
     std::string BucketName;
     std::string ObjectName;
@@ -202,43 +202,48 @@ int cloud_fs_oss_downloadFile(char * filepath, char * bucketName, char * fileNam
         BucketName = bucketName;
     }
 
-    if (filepath == NULL || fileName == NULL) 
+    if (filepath == NULL) 
     {
         return -1;
     }
 
-    FileNametoSave = fileName;
     memset(file_path,0,1024);
     pfile_path = filepath;
     strncpy(file_path,&pfile_path[1],strlen(pfile_path)-1);
     ObjectName = file_path;
 
-    /*初始化网络等资源*/
     InitializeSdk();
 
     ClientConfiguration conf;
     OssClient client(Endpoint, AccessKeyId, AccessKeySecret, conf);
 
-    /*获取文件到本地文件*/
     GetObjectRequest request(BucketName, ObjectName);
-    request.setResponseStreamFactory([=]() {return std::make_shared<std::fstream>(FileNametoSave, std::ios_base::out | std::ios_base::in | std::ios_base::trunc| std::ios_base::binary); });
-
     auto outcome = client.GetObject(request);
 
-    if (!outcome.isSuccess()) 
-    {    
-        /*异常处理*/
-        std::cout << "GetObjectToFile fail" <<
+    if (outcome.isSuccess()) {
+        auto& stream = outcome.result().Content();
+        // printf("download file well!\n");
+        if (stream->good()) {
+            stream->read(content, 1024);
+            ShutdownSdk();
+            // printf("store file well!\n");
+            return 0;
+	    }
+        else 
+        {
+            printf("Somwthing wrong!\n");
+            ShutdownSdk();
+            return -3;
+        }
+    }
+    else {
+        std::cout << "getObjectToBuffer fail" <<
         ",code:" << outcome.error().Code() <<
         ",message:" << outcome.error().Message() <<
         ",requestId:" << outcome.error().RequestId() << std::endl;
         ShutdownSdk();
-        return -2;
+        return -1;
     }
-
-    /*释放网络等资源*/
-    ShutdownSdk();
-    return 0;
 }
 
 /**

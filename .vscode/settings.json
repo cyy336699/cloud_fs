@@ -70,7 +70,8 @@
         "errno.h": "c",
         "kernel.h": "c",
         "cli.h": "c",
-        "ossclient.h": "c"
+        "ossclient.h": "c",
+        "fcntl.h": "c"
     },
     "aliosStudio.comPort": "/dev/ttyUSB0        ",
     "aliosStudio.hardware.baudrate": "1500000"

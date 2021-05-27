@@ -57,9 +57,9 @@
 #define CONFIG_ELEMENT_CHANNEL  "channel"
 
 #define TAG "WIFI_SERVICE"
-#define NETMGR_WIFI_LOGE(level, ...)      LOGE(TAG, level, ##__VA_ARGS__)
+#define NETMGR_WIFI_LOGE(level, ...)      //LOGE(TAG, level, ##__VA_ARGS__)
 #define NETMGR_WIFI_LOGI(level, ...)      LOGI(TAG, level, ##__VA_ARGS__)
-#define NETMGR_WIFI_LOGD(level, ...)      LOGD(TAG, level, ##__VA_ARGS__)
+#define NETMGR_WIFI_LOGD(level, ...)      //LOGD(TAG, level, ##__VA_ARGS__)
 
 #define WPA_STATE_COMPLETED       "COMPLETED"
 #define WPA_STATE_DISCONNECTED    "DISCONNECTED"
