@@ -1,5 +1,4 @@
 #define PATH "/data/cloud/"
-#define FILE PATH"/d1"
 #define CONTENT "cloud demo\n"
 
 int cloud_fs_read(char * filepath);

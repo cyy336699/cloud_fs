@@ -9,7 +9,7 @@ using namespace AlibabaCloud::OSS;
 
 /**
  * create Buckets, default Standard and private
- * @return 0 for ok, 1 for error
+ * @return 0 for ok, negative number for error
  */
 int cloud_fs_oss_mkbucket(char* bucketName)
 {
@@ -19,20 +19,16 @@ int cloud_fs_oss_mkbucket(char* bucketName)
         return -2;
     }
 
-    /*初始化网络等资源*/
     InitializeSdk();
 
     ClientConfiguration conf;
     OssClient client(Endpoint, AccessKeyId, AccessKeySecret, conf);
 
-    /*指定新创建bucket的名称、存储类型和ACL*/
     CreateBucketRequest request(bucketName, StorageClass::Standard, CannedAccessControlList::Private);
 
-    /*创建bucket*/
     auto outcome = client.CreateBucket(request);
 
     if (!outcome.isSuccess()) {
-        /* 异常处理 */
         std::cout << "CreateBucket fail" <<
         ",code:" << outcome.error().Code() <<
         ",message:" << outcome.error().Message() <<
@@ -41,14 +37,13 @@ int cloud_fs_oss_mkbucket(char* bucketName)
         flag = -1;
     }
 
-    /*释放网络等资源*/
     ShutdownSdk();
     return flag;
 }
 
 /**
  * determine whether the storage space exists
- * @return 1 for exist, 0 for not exist.
+ * @return 1 for exist, 0 for not exist, negative number for error.
  */
 int cloud_fs_oss_isBucketExist(char* bucketName)
 {
@@ -58,13 +53,11 @@ int cloud_fs_oss_isBucketExist(char* bucketName)
         return -2;
     }
 
-    /* 初始化网络等资源 */
     InitializeSdk();
 
     ClientConfiguration conf;
     OssClient client(Endpoint, AccessKeyId, AccessKeySecret, conf);
 
-    /* 判断存储空间是否存在 */
     auto outcome = client.DoesBucketExist(bucketName);
 
     if (outcome) {    
@@ -76,14 +69,13 @@ int cloud_fs_oss_isBucketExist(char* bucketName)
         flag = 0;
     }
 
-    /* 释放网络等资源 */
     ShutdownSdk();
     return flag;
 }
 
 /**
  * delete specified Buckets
- * @return 1 for ok, 0 for error.
+ * @return 0 for ok, negative number for error.
  */
 int cloud_fs_oss_deleteBucket(char* bucketName)
 {
@@ -93,20 +85,16 @@ int cloud_fs_oss_deleteBucket(char* bucketName)
         return -2;
     }
 
-        /* 初始化网络等资源 */
     InitializeSdk();
 
     ClientConfiguration conf;
     OssClient client(Endpoint, AccessKeyId, AccessKeySecret, conf);
 
-    /* 指定要删除的bucket名称 */
     DeleteBucketRequest request(bucketName);
 
-    /* 删除bucket */
     auto outcome = client.DeleteBucket(request);
 
     if (!outcome.isSuccess()) {
-        /* 异常处理 */
         std::cout << "DeleteBucket fail" <<
         ",code:" << outcome.error().Code() <<
         ",message:" << outcome.error().Message() <<
@@ -115,7 +103,6 @@ int cloud_fs_oss_deleteBucket(char* bucketName)
         return -1;
     }
 
-    /* 释放网络等资源 */
     ShutdownSdk();
     return 0;
 }
@@ -124,7 +111,7 @@ int cloud_fs_oss_deleteBucket(char* bucketName)
  * upload specified file
  * @param localfilepath: absolute path,e.g.: '/a/b/c/d.txt'
  * @param bucketName: If it is NULL, it defaults to Buckets
- * @return 1 for ok, 0 for error.
+ * @return 0 for ok, negative number for error.
  */
 int cloud_fs_oss_uploadFile(char * localfilepath, char * bucketName, char * filename)
 {
@@ -152,7 +139,6 @@ int cloud_fs_oss_uploadFile(char * localfilepath, char * bucketName, char * file
     strncpy(file_path,&pfile_path[1],strlen(pfile_path)-1);
     ObjectName = file_path;
 
-    /* 初始化网络等资源 */
     InitializeSdk();
 
     ClientConfiguration conf;
@@ -164,7 +150,6 @@ int cloud_fs_oss_uploadFile(char * localfilepath, char * bucketName, char * file
     auto outcome = client.PutObject(request);
 
     if (!outcome.isSuccess()) {
-        /* 异常处理 */
         std::cout << "PutObject fail" <<
                   ",code:" << outcome.error().Code() <<
                   ",message:" << outcome.error().Message() <<
@@ -172,7 +157,7 @@ int cloud_fs_oss_uploadFile(char * localfilepath, char * bucketName, char * file
         ShutdownSdk();
         return -2;
     }
-    /* 释放网络等资源 */
+
     ShutdownSdk();
     return 0;
 }
@@ -182,8 +167,7 @@ int cloud_fs_oss_uploadFile(char * localfilepath, char * bucketName, char * file
  * download file to specified file
  * @param filepath: absolute path,e.g.: '/a/b/c/d.txt'
  * @param bucketName: If it is NULL, it defaults to Buckets
- * @param fileName: the name of file which to save the content
- * @return 1 for ok, 0 for error.
+ * @return 0 for ok, negative number for error.
  */
 int cloud_fs_oss_downloadFile(char * filepath, char * bucketName, char * content)
 {
@@ -250,7 +234,7 @@ int cloud_fs_oss_downloadFile(char * filepath, char * bucketName, char * content
  * determine whether the file exists
  * @param filepath: absolute path,e.g.: '/a/b/c/d.txt'
  * @param bucketName: If it is NULL, it defaults to Buckets
- * @return 1 for ok, 0 for error.
+ * @return 1 for exist, 0 for not exist, negative number for error
  */
 int cloud_fs_oss_isFileExist(char * filepath, char * bucketName)
 {
@@ -278,24 +262,22 @@ int cloud_fs_oss_isFileExist(char * filepath, char * bucketName)
     strncpy(file_path,&pfile_path[1],strlen(pfile_path)-1);
     ObjectName = file_path;
 
-    /* 初始化网络等资源 */
     InitializeSdk();
 
     ClientConfiguration conf;
     OssClient client(Endpoint, AccessKeyId, AccessKeySecret, conf);
   
-    /* 判断文件是否存在 */
     auto outcome = client.DoesObjectExist(BucketName, ObjectName);
 
     if (outcome) {
         //   std::cout << "The Object exists!" << std::endl;         
         ShutdownSdk();
-        return 0;              
+        return 1;              
     }                              
     else {                         
         //   std::cout << "The Object does not exist!" << std::endl;
         ShutdownSdk();
-        return -2;
+        return 0;
     }
 }
 
@@ -303,7 +285,7 @@ int cloud_fs_oss_isFileExist(char * filepath, char * bucketName)
  * get file size
  * @param filepath: absolute path,e.g.: '/a/b/c/d.txt'
  * @param bucketName: If it is NULL, it defaults to Buckets
- * @return 1 for ok, 0 for error.
+ * @return positive number for length, negative number for error.
  */
 long int cloud_fs_oss_getFileSize(char * filepath, char * bucketName)
 {
@@ -340,7 +322,6 @@ long int cloud_fs_oss_getFileSize(char * filepath, char * bucketName)
     auto outcome = client.GetObjectMeta(BucketName, ObjectName);
 
     if (!outcome.isSuccess()) {
-        /* 异常处理 */
         std::cout << "GetObjectMeta fail" <<
         ",code:" << outcome.error().Code() <<
         ",message:" << outcome.error().Message() <<
@@ -358,7 +339,6 @@ long int cloud_fs_oss_getFileSize(char * filepath, char * bucketName)
     // outcome = client.HeadObject(BucketName, ObjectName);
 
     // if (!outcome.isSuccess()) {
-    //     /* 异常处理 */
     //     std::cout << "HeadObject fail" <<
     //     ",code:" << outcome.error().Code() <<
     //     ",message:" << outcome.error().Message() <<
@@ -379,7 +359,7 @@ long int cloud_fs_oss_getFileSize(char * filepath, char * bucketName)
  * @param filepath: absolute path,e.g.: '/a/b/c/d.txt'
  * @param bucketName: If it is NULL, it defaults to Buckets
  * @param allfiles: record all file names
- * @return 1 for ok, 0 for error.
+ * @return 0 for ok, negative number for error.
  */
 int cloud_fs_oss_listallfiles(char * filepath, char * bucketName, std::vector<std::string>& allFiles)
 {
@@ -438,7 +418,6 @@ int cloud_fs_oss_listallfiles(char * filepath, char * bucketName, std::vector<st
         isTruncated = outcome.result().IsTruncated();
     } while (isTruncated);
 
-    /* 释放网络等资源 */
     ShutdownSdk();
     return 0;
 }
@@ -448,8 +427,7 @@ int cloud_fs_oss_listallfiles(char * filepath, char * bucketName, std::vector<st
  * @param dirpath: absolute path,e.g.: 'a/b/'
  * @param bucketName: If it is NULL, it defaults to Buckets
  * @param allFiles: record all file names
- * 
- * @return 1 for ok, 0 for error.
+ * @return 0 for ok, negative number for error.
  */
 int cloud_fs_oss_listfiles(char * filepath, char * bucketName, std::vector<std::string>& allFiles, std::vector<std::string>& allDirs)
 {
@@ -500,7 +478,8 @@ int cloud_fs_oss_listfiles(char * filepath, char * bucketName, std::vector<std::
                 ",code:" << outcome.error().Code() <<
                 ",message:" << outcome.error().Message() <<
                 ",requestId:" << outcome.error().RequestId() << std::endl;
-                break;
+                ShutdownSdk();
+                return -1;
             }  
             for (const auto& object : outcome.result().ObjectSummarys()) {
                 // std::cout << "object"<<
@@ -517,7 +496,6 @@ int cloud_fs_oss_listfiles(char * filepath, char * bucketName, std::vector<std::
             isTruncated = outcome.result().IsTruncated();
     } while (isTruncated);
 
-    /* 释放网络等资源 */
     ShutdownSdk();
     return 0;
 }
@@ -526,7 +504,7 @@ int cloud_fs_oss_listfiles(char * filepath, char * bucketName, std::vector<std::
  * delete the specified file
  * @param filepath: absolute path,e.g.: '/a/b/c/d.txt'
  * @param bucketName: If it is NULL, it defaults to Buckets
- * @return 1 for ok, 0 for error.
+ * @return 0 for ok, negative number for error.
  */
 long int cloud_fs_oss_deleteFile(char * filepath, char * bucketName)
 {
@@ -580,7 +558,7 @@ long int cloud_fs_oss_deleteFile(char * filepath, char * bucketName)
  * delete the dir
  * @param dirpath: absolute path,e.g.: '/a/b/c/'
  * @param bucketName: If it is NULL, it defaults to Buckets
- * @return 1 for ok, 0 for error.
+ * @return 0 for ok, negative number for error.
  */
 long int cloud_fs_oss_deleteDir(char * dirpath, char * bucketName)
 {
@@ -627,7 +605,8 @@ long int cloud_fs_oss_deleteDir(char * dirpath, char * bucketName)
                 ",code:" << outcome.error().Code() <<
                 ",message:" << outcome.error().Message() <<
                 ",requestId:" << outcome.error().RequestId() << std::endl;
-                break;
+                ShutdownSdk();
+                return -1;
             }
             for (const auto& object : outcome.result().ObjectSummarys()) {
                 DeleteObjectRequest request(BucketName, object.Key());

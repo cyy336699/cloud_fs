@@ -4,8 +4,8 @@
 
 static char AccessKeyId[] = "";
 static char AccessKeySecret[] = "";
-static char Endpoint[] = "oss-cn-beijing.aliyuncs.com";
-static char Buckets[] = "cloud-panic";
+static char Endpoint[] = "";
+static char Buckets[] = "";
 
 int cloud_fs_oss_mkbucket(char* bucketName);
 int cloud_fs_oss_isBucketExist(char* bucketName);

@@ -29,7 +29,7 @@ int cloud_fs_read(char * filepath)
         
         int ret;
         ret = cloud_fs_oss_isFileExist(const_cast<char*>(downloadFilePath.c_str()), NULL);
-        if (ret != 0) {
+        if (ret != 1) {
             printf("cloud has no such file!\r\n");
             return -1;
         }
@@ -121,7 +121,7 @@ int cloud_fs_write(char * filepath, char * content)
     aos_close(fd1);
 
     ret = cloud_fs_oss_isFileExist(const_cast<char*>(downloadFilePath.c_str()), NULL);
-    if (ret == 0) {
+    if (ret == 1) {
         ret = cloud_fs_oss_deleteFile(const_cast<char*>(downloadFilePath.c_str()), NULL);
         if (ret != 0) {
             printf("delete file wrong!\r\n");
@@ -148,7 +148,7 @@ int cloud_fs_touch(char * filepath)
     int fd1, buff[1024] = {0}, ret;
 
     ret = cloud_fs_oss_isFileExist(const_cast<char*>(downloadFilePath.c_str()), NULL);
-    if (ret == 0) {
+    if (ret == 1) {
         printf("cloud already has the same file\r\n");
         return -1;
     }
@@ -199,7 +199,7 @@ int cloud_fs_rmfile(char * filepath)
     }
 
     ret = cloud_fs_oss_isFileExist(const_cast<char*>(downloadFilePath.c_str()), NULL);
-    if (ret != 0) {
+    if (ret != 1) {
         printf("cloud doesn't  have the same file, delete file wrong\r\n");
         return -3;
     }
@@ -251,7 +251,7 @@ int cloud_fs_move(char  * oldpath, char * newpath)
     char content[1030];
 
     ret = cloud_fs_oss_isFileExist(const_cast<char*>(downloadOldFilePath.c_str()), NULL);
-    if (ret != 0) {
+    if (ret != 1) {
         printf("cloud doesn't  have the same file\r\n");
         return -1;
     }
@@ -336,7 +336,7 @@ int cloud_fs_cp(char  * oldpath, char * newpath)
     char content[1030];
 
     ret = cloud_fs_oss_isFileExist(const_cast<char*>(downloadOldFilePath.c_str()), NULL);
-    if (ret != 0) {
+    if (ret != 1) {
         printf("cloud doesn't  have the same file\r\n");
         return -1;
     }
