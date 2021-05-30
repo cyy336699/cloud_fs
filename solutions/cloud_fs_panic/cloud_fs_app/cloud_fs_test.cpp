@@ -86,5 +86,5 @@ static void cloud_fs_test(int argc, char **argv)
 }
 
 #if AOS_COMP_CLI
-ALIOS_CLI_CMD_REGISTER(cloud_fs_test, c_fs_test, cloud fs test demo)
+ALIOS_CLI_CMD_REGISTER(cloud_fs_test, cloud_fs_test, cloud fs test demo)
 #endif
