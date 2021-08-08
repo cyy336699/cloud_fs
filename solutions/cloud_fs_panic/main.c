@@ -20,12 +20,12 @@ int application_start(int argc, char *argv[])
 {
     int count = 0;
 
-    aos_set_log_level(AOS_LL_DEBUG);
+    // aos_set_log_level(AOS_LL_DEBUG);
     event_service_init(NULL);
-    netmgr_service_init(NULL); //添加网络
+    // netmgr_service_init(NULL); //添加网络
 
-    aos_rmdir("/data/cloud");
-    aos_mkdir("/data/cloud");
+    // aos_rmdir("/data/cloud");
+    // aos_mkdir("/data/cloud");
 
     printf("Everything inits well!\r\n");
     printf("**************************************************************\r\n");

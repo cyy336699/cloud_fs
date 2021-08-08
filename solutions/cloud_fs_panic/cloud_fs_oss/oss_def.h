@@ -12,6 +12,7 @@ int cloud_fs_oss_isBucketExist(char* bucketName);
 int cloud_fs_oss_deleteBucket(char* bucketName);
 int cloud_fs_oss_uploadFile(char * localfilepath, char * bucketName, char * filename);
 int cloud_fs_oss_downloadFile(char * filepath, char * bucketName, char * content);
+int cloud_fs_oss_downloadFile2File(char * filepath, char * bucketName, char * localfilepath);
 int cloud_fs_oss_isFileExist(char * filepath, char * bucketName);
 long int cloud_fs_oss_getFileSize(char * filepath, char * bucketName);
 int cloud_fs_oss_listallfiles(char * filepath, char * bucketName, std::vector<std::string> & allFiles);

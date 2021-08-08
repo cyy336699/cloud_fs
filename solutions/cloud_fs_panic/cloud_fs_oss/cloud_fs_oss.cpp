@@ -169,6 +169,63 @@ int cloud_fs_oss_uploadFile(char * localfilepath, char * bucketName, char * file
  * @param bucketName: If it is NULL, it defaults to Buckets
  * @return 0 for ok, negative number for error.
  */
+int cloud_fs_oss_downloadFile2File(char * filepath, char * bucketName, char * localfilepath)
+{
+    std::string BucketName;
+    std::string ObjectName;
+    std::string FileNametoSave;
+
+    char *pfile_path,file_path[1024];
+
+    if (bucketName == NULL) 
+    {
+        BucketName = Buckets;
+    }
+    else 
+    {
+        BucketName = bucketName;
+    }
+
+    if (filepath == NULL) 
+    {
+        return -1;
+    }
+
+    memset(file_path,0,1024);
+    pfile_path = filepath;
+    strncpy(file_path,&pfile_path[1],strlen(pfile_path)-1);
+    ObjectName = file_path;
+
+    InitializeSdk();
+
+    ClientConfiguration conf;
+    OssClient client(Endpoint, AccessKeyId, AccessKeySecret, conf);
+
+    GetObjectRequest request(BucketName, ObjectName);
+    request.setResponseStreamFactory([=]() {return std::make_shared<std::fstream>(localfilepath, std::ios_base::out | std::ios_base::in | std::ios_base::trunc| std::ios_base::binary); });
+
+    auto outcome = client.GetObject(request);
+
+    if (outcome.isSuccess()) {    
+        std::cout << "GetObjectToFile success" << outcome.result().Metadata().ContentLength() << std::endl;
+    }
+    else {
+        /*异常处理*/
+        std::cout << "GetObjectToFile fail" <<
+        ",code:" << outcome.error().Code() <<
+        ",message:" << outcome.error().Message() <<
+        ",requestId:" << outcome.error().RequestId() << std::endl;
+        ShutdownSdk();
+        return -1;
+    }
+}
+
+/**
+ * download file to specified file
+ * @param filepath: absolute path,e.g.: '/a/b/c/d.txt'
+ * @param bucketName: If it is NULL, it defaults to Buckets
+ * @return 0 for ok, negative number for error.
+ */
 int cloud_fs_oss_downloadFile(char * filepath, char * bucketName, char * content)
 {
     std::string BucketName;
