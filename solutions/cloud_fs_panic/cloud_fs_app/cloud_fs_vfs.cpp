@@ -12,12 +12,14 @@
 #include <string>
 #include <vector>
 
-#include "../cloud_fs_oss/oss_def.h"
 #include "littlefs.h"
 #include "cloud_fs_vfs.h"
 
 #define LF_PATH "/data"
 #define CLOUD_PATH "/cloud"
+
+extern Cloud_Dir cloud_main_dir;
+static vfs_filesystem_ops_t cloud_fs_ops;
 
 static int32_t cloud_vfs_open(vfs_file_t *fp, const char *filepath, int32_t flags) 
 {
@@ -196,8 +198,6 @@ static int32_t cloud_vfs_remove(vfs_file_t *fp, const char *filepath)
     return 0;
 }
 
-static vfs_filesystem_ops_t cloud_fs_ops;
-
 int32_t cloud_fs_register(const char* cloudMonut)
 {   
     cloud_fs_ops.open = &cloud_vfs_open;
@@ -214,10 +214,17 @@ int32_t cloud_fs_register(const char* cloudMonut)
     printf("cloud_fs_register well!\n"); 
     return ret;
 }
+
 int32_t cloud_fs_unregister(const char *cloudMonut)
 {
     int ret;
     ret = vfs_unregister_fs(cloudMonut);
     printf("cloud_fs_unregister well!\n"); 
     return ret;
+}
+
+void cloud_fs_dir_sync() {
+    cloud_main_dir.setDir("/cloud", 1);
+
+    cloud_main_dir.dirsync("/");
 }
