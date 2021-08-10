@@ -36,6 +36,8 @@ private:
     std::vector<Cloud_Dir> subdirs;
     std::vector<Cloud_File> subfiles;
 public:
+    int pos = 0;
+
     Cloud_Dir()  {}
 
     Cloud_Dir(std::string name) {
@@ -49,6 +51,10 @@ public:
 
     std::string getname() {
         return this->name;
+    }
+
+    int getnums() {
+        return subfiles.size() + subdirs.size();
     }
 
     int isFileExists(std::string name) {
@@ -66,7 +72,7 @@ public:
             std::string thenname = name.substr(index);
             int i = 0, flag = -1;
             for (i = 0; i < subdirs.size(); i++) {
-                if (subdirs[i].getname() == name) {
+                if (subdirs[i].getname() == dirname) {
                     flag = i;
                     break;
                 }
@@ -134,6 +140,58 @@ public:
         return 1;
     }
 
+    int dirExists(std::string name) {
+        int index = name.find("/", 1);
+        if (index <= 0) {
+            std::string dirname = name.substr(1);
+            int i = 0, flag = -1;
+            for (i = 0; i < subdirs.size(); i++) {
+                if (subdirs[i].getname() == dirname) {
+                    flag = i;
+                    break;
+                }
+            }
+            if (flag == -1 ) {
+                return -1;
+            }
+            return flag;
+        }
+        else {
+            std::string dirname = name.substr(1, index);
+            std::string thenname = name.substr(index);
+            int i = 0, flag = -1;
+            for (i = 0; i < subdirs.size(); i++) {
+                if (subdirs[i].getname() == dirname) {
+                    flag = i;
+                    break;
+                }
+            }
+            if (flag == -1 ) {
+                return -1;
+            }
+            return subdirs[flag].dirExists(thenname);
+        }
+    }
+
+    Cloud_Dir getdir(int flag) {
+        return subdirs[flag];
+    }
+
+    std::string getsubname() {
+        if (pos >= subfiles.size() + subdirs.size()) {
+            return "";
+        }
+        if (pos < subfiles.size()) {
+            return subfiles[pos].getname();
+        }
+        return subdirs[pos - subfiles.size()].getname();
+    }
 };
+
+typedef struct _Cloud_Vfs_Dir{
+    vfs_dir_t vdir;
+    Cloud_Dir cloud_dir;
+    vfs_dirent_t vdirent;
+} Cloud_Vfs_Dir;
 
 Cloud_Dir cloud_main_dir;

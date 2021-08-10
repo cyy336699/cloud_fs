@@ -167,12 +167,10 @@ static int32_t cloud_vfs_open(vfs_file_t *fp, const char *filepath, int32_t flag
     else {
         return fd;
     }
-    // TODO: timer xx
 }
 
 static int32_t cloud_vfs_close(vfs_file_t *fp)
 {
-    // TODO: sync
     cloud_vfs_sync(fp);
 
     vfs_file_t fp_lfs =*fp;
@@ -216,7 +214,6 @@ static int32_t cloud_vfs_write(vfs_file_t *fp, const char *buf, uint32_t len)
 
 static int32_t cloud_vfs_sync(vfs_file_t *fp)
 {
-    // TODO:sync
     vfs_file_t fp_lfs =*fp;
     fp_lfs.node->i_name=(char*)LF_PATH;
     //先在本地littlefs系统里进行同步
