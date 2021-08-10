@@ -24,6 +24,8 @@
 #define LF_PATH "/data"
 #define CLOUD_PATH "/cloud"
 
+using namespace __gnu_cxx;
+
 extern Cloud_Dir cloud_main_dir;
 static vfs_filesystem_ops_t cloud_fs_ops;
 
@@ -33,14 +35,14 @@ struct oss_and_local {
     char* ossfilepath;
 };
 
-static hash_map<char*, oss_and_local*> fp_path_map; //用于存储fp为键值，路径结构体指针为value的hashmap
-static hash_map<char*, Timer*> fp_timer_map; //用于存储fp为键值，Timer类指针为value的hashmap。用于标示哪些fp对应的文件正在上传（已绑定timer）
+static hash_map <char*, oss_and_local*> fp_path_map; //用于存储fp为键值，路径结构体指针为value的hashmap
+static hash_map <char*, Timer*> fp_timer_map; //用于存储fp为键值，Timer类指针为value的hashmap。用于标示哪些fp对应的文件正在上传（已绑定timer）
 
 //该函数用于回调函数main_timer_call_func调用来将文件上传至OSS
 //参数arg由于timer的要求，需要传入void*，函数内部再转换成vfs_file_t*
 void oss_file_upload(void* arg) {
     vfs_file_t* temp_fp = (vfs_file_t*) arg;
-    hash_map<char*, oss_and_local*>::iterator it = fp_path_map.find((char*) temp_fp);
+    hash_map <char*, oss_and_local*>::iterator it = fp_path_map.find((char*) temp_fp);
     hash_map<char*, Timer*>::iterator iter = fp_timer_map.find((char*) temp_fp);
     if (it == fp_path_map.end()) { //没找到fp对应的路径信息
         printf("something goes wrong with fp_path_map, fp doesn't exist!\n");
@@ -131,9 +133,9 @@ static int32_t cloud_vfs_open(vfs_file_t *fp, const char *filepath, int32_t flag
 
     //使用新建的路径结构体，存储oss路径和local路径，并与fp指针建立map关系
     oss_and_local* temp = (oss_and_local*)aos_malloc(sizeof(oss_and_local));
-    temp->localfilepath = lfPath.c_str();
-    temp->ossfilepath = downloadFilePath.c_str();
-    fp_path_map.at((char*) fp) = temp;
+    temp->localfilepath = const_cast<char *>(lfPath.c_str());
+    temp->ossfilepath = const_cast<char *>(downloadFilePath.c_str());
+    fp_path_map.insert(make_pair((char*) fp,  temp));
     //fwt新增代码end
 
     int fd = -1, buff[1024] = {0};
@@ -166,17 +168,6 @@ static int32_t cloud_vfs_open(vfs_file_t *fp, const char *filepath, int32_t flag
     else {
         return fd;
     }
-}
-
-static int32_t cloud_vfs_close(vfs_file_t *fp)
-{
-    cloud_vfs_sync(fp);
-
-    vfs_file_t fp_lfs =*fp;
-    fp_lfs.node->i_name=(char*)LF_PATH;
-   
-    int32_t ret =lfs_vfs_close(&fp_lfs);
-    return ret;
 }
 
 static int32_t cloud_vfs_read(vfs_file_t *fp, char *buf, uint32_t len)
@@ -231,7 +222,7 @@ static int32_t cloud_vfs_sync(vfs_file_t *fp)
         //初始化辅定时器，回调函数是ass_timer_call_func，倒数第二个参数：1代表周期执行（每隔15s执行一次），最后一个参数：1代表自动开始执行
         timer.init_ass_timer(ass_timer_call_func, (void*)timer.get_file(), 15000, 1, 1);
         //将新建的Timer类加入hashmap中，键值为fp
-        fp_timer_map.at((char*) fp) = &timer;
+        fp_timer_map.insert(make_pair((char*) fp, &timer));
     } else {
         Timer* timer = (Timer*)aos_malloc(sizeof(Timer));
         timer = it->second;
@@ -246,6 +237,17 @@ static int32_t cloud_vfs_sync(vfs_file_t *fp)
         (*timer).reset_ass_timer(15000);
         aos_free(timer);
     }
+    return ret;
+}
+
+static int32_t cloud_vfs_close(vfs_file_t *fp)
+{
+    cloud_vfs_sync(fp);
+
+    vfs_file_t fp_lfs =*fp;
+    fp_lfs.node->i_name=(char*)LF_PATH;
+   
+    int32_t ret =lfs_vfs_close(&fp_lfs);
     return ret;
 }
 
