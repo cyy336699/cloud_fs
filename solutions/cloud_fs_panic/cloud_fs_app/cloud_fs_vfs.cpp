@@ -19,7 +19,7 @@
 #include "littlefs.h"
 #include "cloud_fs_vfs.h"
 
-#include "timer.h"
+#include "delay_upload/timer.h"
 
 #define LF_PATH "/data"
 #define CLOUD_PATH "/cloud"
@@ -46,6 +46,14 @@ void oss_file_upload(void* arg) {
         printf("something goes wrong with fp_path_map, fp doesn't exist!\n");
         return;
     } else {
+        //如果要进行上传，则先删除fp_timer_map中的fp-timer键值对，防止此时write发生错误
+        if (iter == fp_timer_map.end()) {
+            printf("fp-timer map doesn't exist!\n");
+            return;
+        } else {
+            //删除已上传的fp对应的Timer类（计时器）
+            fp_timer_map.erase(iter);
+        }
         oss_and_local* temp = (oss_and_local*)aos_malloc(sizeof(oss_and_local));
         temp = it->second; //用temp存储fp对应的两个路径信息
         //调用oss上传函数，传入对应参数，将文件上传至OSS
@@ -54,13 +62,6 @@ void oss_file_upload(void* arg) {
         fp_path_map.erase(it);
         //释放临时申请的temp（路径结构体）
         aos_free(temp);
-        if (iter == fp_timer_map.end()) {
-            printf("fp-timer map doesn't exist!\n");
-            return;
-        } else {
-            //删除已上传的fp对应的Timer类（计时器）
-            fp_timer_map.erase(iter);
-        }
     }
 }
 
@@ -203,7 +204,8 @@ static int32_t cloud_vfs_write(vfs_file_t *fp, const char *buf, uint32_t len)
         //由于写操作，对该文件的访问次数加1
         (*timer).set_visit_times((*timer).get_visit_times()+1);
         //停止主定时器，避免在没有关闭/刷新文件之前，自动上传至OSS，导致最近的修改丢失
-        aos_timer_stop(&((*timer).get_main_timer()));
+        aos_timer_t temp_timer = (*timer).get_main_timer();
+        aos_timer_stop(&temp_timer);
         //因为对文件进行了操作，因此15s的间隔时间重新计时
         (*timer).reset_ass_timer(15000);
     }
@@ -225,9 +227,9 @@ static int32_t cloud_vfs_sync(vfs_file_t *fp)
         //创建一个定时器类
         Timer timer(fp);
         //初始化主定时器，回调函数是main_timer_call_func，倒数第二个参数：0代表单次执行，最后一个参数：1代表自动开始执行
-        timer.init_main_timer((void*)main_timer_call_func, (void*)timer.get_file(), 20000, 0, 1);
+        timer.init_main_timer(main_timer_call_func, (void*)timer.get_file(), 20000, 0, 1);
         //初始化辅定时器，回调函数是ass_timer_call_func，倒数第二个参数：1代表周期执行（每隔15s执行一次），最后一个参数：1代表自动开始执行
-        timer.init_ass_timer((void*)ass_timer_call_func, (void*)timer.get_file(), 15000, 1, 1);
+        timer.init_ass_timer(ass_timer_call_func, (void*)timer.get_file(), 15000, 1, 1);
         //将新建的Timer类加入hashmap中，键值为fp
         fp_timer_map.at((char*) fp) = &timer;
     } else {
