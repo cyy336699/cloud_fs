@@ -297,6 +297,10 @@ static int32_t cloud_vfs_rename(vfs_file_t *fp,const char *oldpath, const char *
         printf("download file error!\n");
         return -1;
     }
+
+    cloud_main_dir.removefile(cloudOldFilePath);
+    cloud_main_dir.mkfile(cloudNewFilePath);
+    
     return 0;
 }
 
@@ -332,6 +336,8 @@ static int32_t cloud_vfs_remove(vfs_file_t *fp, const char *filepath)
         printf("delete cloud file wrong!\r\n");
         return -1;
     }
+
+    cloud_main_dir.removefile(downloadFilePath);
 
     return 0;
 }

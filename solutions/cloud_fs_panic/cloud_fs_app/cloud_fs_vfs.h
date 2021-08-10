@@ -239,7 +239,7 @@ public:
             if (flag != -1) {
                 return;
             }
-            Cloud_Dir tmpdir(name);
+            Cloud_Dir tmpdir(dirname);
             subdirs.push_back(tmpdir);
             return ;
         }
@@ -260,6 +260,81 @@ public:
                 return ;
             }
             subdirs[flag].mkdir(thenname);
+            return ;
+        }
+    }
+
+    void removefile(std::string name) {
+        int index = name.find("/", 1);
+        if (index <= 0) {
+            // file
+            std::string filename = name.substr(1);
+            int i =0, flag = -1;
+            for (i = 0; i < subfiles.size(); i++) {
+                if (subfiles[i].getname() == filename) {
+                    flag = i;
+                    break;
+                }
+            }
+            if (flag == -1 ) {
+                return;
+            }
+            subfiles.erase(subfiles.begin() + flag);
+            return;
+        }
+        else {
+            std::string dirname = name.substr(1, index);
+            std::string thenname = name.substr(index);
+            int i = 0, flag = -1;
+            for (i = 0; i < subdirs.size(); i++) {
+                if (subdirs[i].getname() == dirname) {
+                    flag = i;
+                    break;
+                }
+            }
+            if (flag == -1 ) {
+                return ;
+            }
+            subdirs[flag].removefile(thenname);
+            return;
+        }
+    }
+
+    void mkfile(std::string name) {
+        int index = name.find("/", 1);
+        if (index <= 0) {
+            std::string filename = name.substr(1);
+             int i = 0, flag = -1;
+            for (i = 0; i < subfiles.size(); i++) {
+                if (subfiles[i].getname() == filename) {
+                    flag = i;
+                    break;
+                }
+            }
+            if (flag != -1) {
+                return;
+            }
+            Cloud_File tmpfile(filename);
+            subfiles.push_back(tmpfile);
+            return ;
+        }
+        else {
+            std::string dirname = name.substr(1, index);
+            std::string thenname = name.substr(index);
+            int i = 0, flag = -1;
+            for (i = 0; i < subdirs.size(); i++) {
+                if (subdirs[i].getname() == dirname) {
+                    flag = i;
+                    break;
+                }
+            }
+            if (flag == -1) {
+                Cloud_Dir tmpdir(dirname);
+                tmpdir.mkfile(thenname);
+                subdirs.push_back(tmpdir);
+                return ;
+            }
+            subdirs[flag].mkfile(thenname);
             return ;
         }
     }
