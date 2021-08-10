@@ -57,6 +57,9 @@ public:
         return subfiles.size() + subdirs.size();
     }
 
+    /**
+     * 1 for exists, 0 for not exists
+     */
     int isFileExists(std::string name) {
         int index = name.find("/", 1);
         if (index <= 0) {
@@ -185,6 +188,80 @@ public:
             return subfiles[pos].getname();
         }
         return subdirs[pos - subfiles.size()].getname();
+    }
+
+    void rmdir(std::string name) {
+        int index = name.find("/", 1);
+        if (index <= 0) {
+            std::string dirname = name.substr(1);
+            int i = 0, flag = -1;
+            for (i = 0; i < subdirs.size(); i++) {
+                if (subdirs[i].getname() == dirname) {
+                    flag = i;
+                    break;
+                }
+            }
+            if (flag == -1 ) {
+                return ;
+            }
+            subdirs.erase(subdirs.begin() + flag);
+            return ;
+        }
+        else {
+            std::string dirname = name.substr(1, index);
+            std::string thenname = name.substr(index);
+            int i = 0, flag = -1;
+            for (i = 0; i < subdirs.size(); i++) {
+                if (subdirs[i].getname() == dirname) {
+                    flag = i;
+                    break;
+                }
+            }
+            if (flag == -1 ) {
+                return ;
+            }
+            subdirs[flag].rmdir(thenname);
+            return ;
+        }
+    }
+
+    void mkdir(std::string name) {
+        int index = name.find("/", 1);
+        if (index <= 0) {
+            std::string dirname = name.substr(1);
+             int i = 0, flag = -1;
+            for (i = 0; i < subdirs.size(); i++) {
+                if (subdirs[i].getname() == dirname) {
+                    flag = i;
+                    break;
+                }
+            }
+            if (flag != -1) {
+                return;
+            }
+            Cloud_Dir tmpdir(name);
+            subdirs.push_back(tmpdir);
+            return ;
+        }
+        else {
+            std::string dirname = name.substr(1, index);
+            std::string thenname = name.substr(index);
+            int i = 0, flag = -1;
+            for (i = 0; i < subdirs.size(); i++) {
+                if (subdirs[i].getname() == dirname) {
+                    flag = i;
+                    break;
+                }
+            }
+            if (flag == -1) {
+                Cloud_Dir tmpdir(dirname);
+                tmpdir.mkdir(thenname);
+                subdirs.push_back(tmpdir);
+                return ;
+            }
+            subdirs[flag].mkdir(thenname);
+            return ;
+        }
     }
 };
 

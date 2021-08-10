@@ -1,6 +1,7 @@
 #include <fcntl.h>
 #include <aos/errno.h>
 #include <aos/kernel.h>
+#include <aos/vfs.h>
 #include "aos/init.h"
 #include "board.h"
 #include <k_api.h>
@@ -143,9 +144,7 @@ static int32_t cloud_vfs_open(vfs_file_t *fp, const char *filepath, int32_t flag
     }
 
     if (fd <= 0) {
-        // TODO: modify file exist inquire
-        int ret;
-        ret = cloud_fs_oss_isFileExist(const_cast<char*>(downloadFilePath.c_str()), NULL);
+        int ret = cloud_main_dir.isFileExists(downloadFilePath);
         if (ret != 1) {
             printf("cloud has no such file!\r\n");
 
@@ -153,7 +152,6 @@ static int32_t cloud_vfs_open(vfs_file_t *fp, const char *filepath, int32_t flag
             return fd;
         }
 
-        // TODO: modify download
         ret = cloud_fs_oss_downloadFile2File(const_cast<char*>(downloadFilePath.c_str()), NULL, const_cast<char*>(lfPath.c_str()));
         if (ret == 0) {
             fd= lfs_vfs_open(&fp_lfs, lfPath.c_str(),flags);
@@ -272,8 +270,7 @@ static int32_t cloud_vfs_rename(vfs_file_t *fp,const char *oldpath, const char *
 
     char content[1030];
 
-    // TODO: file exist ?
-    int ret = cloud_fs_oss_isFileExist(const_cast<char*>(cloudOldFilePath.c_str()), NULL);
+    int ret = cloud_main_dir.isFileExists(cloudNewFilePath);
     if (ret != 1) {
         printf("cloud doesn't  have the same file\r\n");
         return -1;
@@ -289,7 +286,7 @@ static int32_t cloud_vfs_rename(vfs_file_t *fp,const char *oldpath, const char *
 
         int32_t ru =lfs_vfs_rename(&fp_lfs, oldLfPath.c_str(), newLfPath.c_str());
 
-        // TODO: timer upload        
+        // TODO: set a timer to upload file
         ret = cloud_fs_oss_uploadFile(const_cast<char*>(newLfPath.c_str()), NULL, const_cast<char*>(cloudNewFilePath.c_str()));
         if (ret != 0) {
             printf("upload file failed!\r\n");
@@ -325,8 +322,7 @@ static int32_t cloud_vfs_remove(vfs_file_t *fp, const char *filepath)
     std::string downloadFilePath = path.substr(6);
     std::string lfPath = LF_PATH + downloadFilePath;
 
-    // TODO: file exist ?
-    int ret = cloud_fs_oss_isFileExist(const_cast<char*>(downloadFilePath.c_str()), NULL);
+    int ret = cloud_main_dir.isFileExists(downloadFilePath);
     if (ret != 1) {
         return 0;
     }
@@ -420,12 +416,29 @@ static void cloud_vfs_seekdir(vfs_file_t *fp, vfs_dir_t *dir, int32_t loc)
 }
 
 static int32_t cloud_vfs_mkdir(vfs_file_t *fp, const char *path) {
-    // TODO:
+    std::string name = path;
+    cloud_main_dir.mkdir(path);
+
+    std::string localpath = "/data/_cloud_tmp_file.txt";
+    std::string filepath = name + "/_cloud_tmp_file.txt";
+    int flag = cloud_fs_oss_uploadFile(const_cast<char *>(localpath.c_str()), NULL, const_cast<char *>(filepath.c_str()));
+    if (flag < 0) {
+        printf("mkdir has something wrong!!!\r\n");
+        return 0;
+    }
+    printf("mkdir well!!!\r\n");
     return 0;
 }
 
-static int32_t cloud_vfs_mkdir(vfs_file_t *fp, const char *path) {
-    // TODO:
+static int32_t cloud_vfs_rmdir(vfs_file_t *fp, const char *path) {
+    std::string name = path;
+    cloud_main_dir.rmdir(path);
+
+    if (cloud_fs_oss_deleteDir(const_cast<char*>(path), NULL) < 0 ) {
+        printf("rmdir has something wrong!!!\r\n");
+        return 0;
+    }
+    printf("rmdir well!!!\r\n");
     return 0;
 }
 
@@ -442,6 +455,8 @@ int32_t cloud_fs_register(const char* cloudMonut)
     cloud_fs_ops.opendir = &cloud_vfs_opendir;
     cloud_fs_ops.readdir = &cloud_vfs_readdir;
     cloud_fs_ops.closedir = &cloud_vfs_closedir;
+    cloud_fs_ops.mkdir = &cloud_vfs_mkdir;
+    cloud_fs_ops.rmdir = &cloud_vfs_rmdir;
     cloud_fs_ops.rewinddir = &cloud_vfs_rewinddir;
     cloud_fs_ops.telldir = &cloud_vfs_telldir;
     cloud_fs_ops.seekdir = &cloud_vfs_seekdir;
@@ -462,6 +477,9 @@ int32_t cloud_fs_unregister(const char *cloudMonut)
 
 void cloud_fs_dir_sync() {
     cloud_main_dir.setDir("/cloud", 1);
+
+    int fd = aos_open("/data/_cloud_tmp_file.txt", O_CREAT | O_RDWR);
+    aos_close(fd);
 
     cloud_main_dir.dirsync("/");
 }
