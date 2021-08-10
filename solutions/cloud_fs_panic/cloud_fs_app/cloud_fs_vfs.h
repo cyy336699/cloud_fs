@@ -123,7 +123,7 @@ public:
 
         for (std::string file : allFiles) 
         {
-            if (file == "") {
+            if (file == "" || file == "_cloud_tmp_file.txt") {
                 continue;
             }
             Cloud_File tmpfile(file);
