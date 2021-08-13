@@ -290,12 +290,13 @@ static int32_t cloud_vfs_rename(vfs_file_t *fp,const char *oldpath, const char *
 
         int32_t ru =lfs_vfs_rename(&fp_lfs, oldLfPath.c_str(), newLfPath.c_str());
 
-        // TODO: set a timer to upload file
-        ret = cloud_fs_oss_uploadFile(const_cast<char*>(newLfPath.c_str()), NULL, const_cast<char*>(cloudNewFilePath.c_str()));
+        //如果要关闭延时上传机制，就把sync函数注释掉，并恢复uploadFile函数即可
+        cloud_vfs_sync(fp);
+        /*ret = cloud_fs_oss_uploadFile(const_cast<char*>(newLfPath.c_str()), NULL, const_cast<char*>(cloudNewFilePath.c_str()));
         if (ret != 0) {
             printf("upload file failed!\r\n");
             return -6;
-        }
+        }*/
     }
     else {
         printf("download file error!\n");
