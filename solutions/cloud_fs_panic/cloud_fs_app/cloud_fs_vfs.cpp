@@ -38,6 +38,15 @@ struct oss_and_local {
 static hash_map <char*, oss_and_local*> fp_path_map; //用于存储fp为键值，路径结构体指针为value的hashmap
 static hash_map <char*, Timer*> fp_timer_map; //用于存储fp为键值，Timer类指针为value的hashmap。用于标示哪些fp对应的文件正在上传（已绑定timer）
 
+int64_t getFileSize(const std::string& file)
+{
+    std::fstream f(file, std::ios::in | std::ios::binary);
+    f.seekg(0, f.end);
+    int64_t size = f.tellg();
+    f.close();
+    return size;
+}
+
 //该函数用于回调函数main_timer_call_func调用来将文件上传至OSS
 //参数arg由于timer的要求，需要传入void*，函数内部再转换成vfs_file_t*
 void oss_file_upload(void* arg) {
@@ -58,8 +67,25 @@ void oss_file_upload(void* arg) {
         }
         oss_and_local* temp = (oss_and_local*)aos_malloc(sizeof(oss_and_local));
         temp = it->second; //用temp存储fp对应的两个路径信息
-        //调用oss上传函数，传入对应参数，将文件上传至OSS
-        cloud_fs_oss_uploadFile(temp->localfilepath, NULL, temp->ossfilepath);
+
+        //调用getFileSize函数获取待上传文件的大小
+        int64_t filesize = getFileSize(temp->localfilepath);
+        //根据文件大小判断采用何种上传方式
+        //文件大小<=128K时，采用简单直接上传方式
+        if (filesize <= 128 * 1024) { 
+            //调用oss上传函数，传入对应参数，将文件上传至OSS
+            cloud_fs_oss_uploadFile(temp->localfilepath, NULL, temp->ossfilepath);
+        }
+        //文件大小>128M时，采用分片上传的方式加速上传 
+        else if (filesize > 128 * 1024 * 1024) {
+            //调用oss分片上传函数，传入对应参数，将文件上传至OSS
+            cloud_fs_oss_uploadFile_part_upload(temp->localfilepath, NULL, temp->ossfilepath);
+        }
+        //128K < 文件大小 <= 128M时，采用断点续传的方式，保证传输的可靠性和效率
+        else {
+            cloud_fs_oss_uploadFile_breakpoint_resume(temp->localfilepath, NULL, temp->ossfilepath);
+        }
+        
         //删除已上传的fp对应的路径结构体
         fp_path_map.erase(it);
         //释放临时申请的temp（路径结构体）

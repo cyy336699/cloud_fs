@@ -12,6 +12,8 @@ int cloud_fs_oss_mkbucket(char* bucketName);
 int cloud_fs_oss_isBucketExist(char* bucketName);
 int cloud_fs_oss_deleteBucket(char* bucketName);
 int cloud_fs_oss_uploadFile(char * localfilepath, char * bucketName, char * filename);
+int cloud_fs_oss_uploadFile_breakpoint_resume(char * localfilepath, char * bucketName, char * filename);
+int cloud_fs_oss_uploadFile_part_upload(char * localfilepath, char * bucketName, char * filename);
 int cloud_fs_oss_downloadFile(char * filepath, char * bucketName, char * content);
 int cloud_fs_oss_downloadFile2File(char * filepath, char * bucketName, char * localfilepath);
 int cloud_fs_oss_isFileExist(char * filepath, char * bucketName);

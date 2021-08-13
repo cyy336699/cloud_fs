@@ -162,6 +162,182 @@ int cloud_fs_oss_uploadFile(char * localfilepath, char * bucketName, char * file
     return 0;
 }
 
+/**
+ * upload specified file with breakpoint resume
+ * @param localfilepath: absolute path,e.g.: '/a/b/c/d.txt'
+ * @param bucketName: If it is NULL, it defaults to Buckets
+ * @return 0 for ok, negative number for error.
+ */
+int cloud_fs_oss_uploadFile_breakpoint_resume(char * localfilepath, char * bucketName, char * filename)
+{
+    std::string BucketName;
+    std::string ObjectName;
+
+    char *pfile_path,file_path[1024];
+
+    if (bucketName == NULL) 
+    {
+        BucketName = Buckets;
+    }
+    else 
+    {
+        BucketName = bucketName;
+    }
+
+    if (localfilepath == NULL) 
+    {
+        return -1;
+    }
+
+    memset(file_path,0,1024);
+    pfile_path = filename;
+    strncpy(file_path,&pfile_path[1],strlen(pfile_path)-1);
+    ObjectName = file_path;
+
+    InitializeSdk();
+
+    ClientConfiguration conf;
+    OssClient client(Endpoint, AccessKeyId, AccessKeySecret, conf);
+
+    //不设置checkpointDir代表默认与该文件下载时DownloadFile同目录
+    UploadObjectRequest request(BucketName, ObjectName, localfilepath);
+    //将默认的分块大小8M调整为128K，以符合128K~128M使用断点续传的要求
+    request.setPartSize(128*1024);
+
+    //断点续传函数
+    auto outcome = client.ResumableUploadObject(request);
+
+    if (!outcome.isSuccess()) {
+        /* 异常处理 */
+        std::cout << "ResumableUploadObject fail" <<
+        ",code:" << outcome.error().Code() <<
+        ",message:" << outcome.error().Message() <<
+        ",requestId:" << outcome.error().RequestId() << std::endl;
+        ShutdownSdk();
+        return -1;
+    }
+
+    /* 释放网络等资源 */
+    ShutdownSdk();
+    return 0;
+}
+
+int64_t getFileSize(const std::string& file)
+{
+    std::fstream f(file, std::ios::in | std::ios::binary);
+    f.seekg(0, f.end);
+    int64_t size = f.tellg();
+    f.close();
+    return size;
+}
+
+/**
+ * upload specified file with part upload
+ * @param localfilepath: absolute path,e.g.: '/a/b/c/d.txt'
+ * @param bucketName: If it is NULL, it defaults to Buckets
+ * @return 0 for ok, negative number for error.
+ */
+int cloud_fs_oss_uploadFile_part_upload(char * localfilepath, char * bucketName, char * filename)
+{
+    std::string BucketName;
+    std::string ObjectName;
+
+    char *pfile_path,file_path[1024];
+
+    if (bucketName == NULL) 
+    {
+        BucketName = Buckets;
+    }
+    else 
+    {
+        BucketName = bucketName;
+    }
+
+    if (localfilepath == NULL) 
+    {
+        return -1;
+    }
+
+    memset(file_path,0,1024);
+    pfile_path = filename;
+    strncpy(file_path,&pfile_path[1],strlen(pfile_path)-1);
+    ObjectName = file_path;
+
+    /* 初始化网络等资源 */
+    InitializeSdk();
+
+    ClientConfiguration conf;
+    OssClient client(Endpoint, AccessKeyId, AccessKeySecret, conf);
+
+    InitiateMultipartUploadRequest initUploadRequest(BucketName, ObjectName);
+
+    /* 初始化分片上传事件 */
+    auto uploadIdResult = client.InitiateMultipartUpload(initUploadRequest);
+    //获取唯一标识该分片上传任务的uploadId
+    auto uploadId = uploadIdResult.result().UploadId();
+
+    //A QUESTION：localfilepath是否就是localFileName?此处fileToUpload需要本地文件名
+    std::string fileToUpload = localfilepath;
+
+    //由于在文件大小大于128M时，才会使用分片上传，因此此处的分片大小选择为16MB
+    int64_t partSize = 16 * 1024 * 1024;
+
+    PartList partETagList;
+    //获取文件大小
+    auto fileSize = getFileSize(fileToUpload);
+
+    int partCount = static_cast<int>(fileSize / partSize);
+    /* 计算分片个数 */
+    if (fileSize % partSize != 0) {
+        partCount++;
+    }
+
+    /* 对每一个分片进行上传 */
+    for (int i = 1; i <= partCount; i++) {
+        auto skipBytes = partSize * (i - 1);
+        auto size = (partSize < fileSize - skipBytes) ? partSize : (fileSize - skipBytes);
+        std::shared_ptr<std::iostream> content = std::make_shared<std::fstream>(fileToUpload, std::ios::in|std::ios::binary);
+        content->seekg(skipBytes, std::ios::beg);
+
+        UploadPartRequest uploadPartRequest(BucketName, ObjectName, content);
+        uploadPartRequest.setContentLength(size);
+        uploadPartRequest.setUploadId(uploadId);
+        uploadPartRequest.setPartNumber(i);
+        auto uploadPartOutcome = client.UploadPart(uploadPartRequest);
+        if (uploadPartOutcome.isSuccess()) {
+            Part part(i, uploadPartOutcome.result().ETag());
+            partETagList.push_back(part);
+        }
+        else {
+            std::cout << "uploadPart fail" <<
+            ",code:" << uploadPartOutcome.error().Code() <<
+            ",message:" << uploadPartOutcome.error().Message() <<
+            ",requestId:" << uploadPartOutcome.error().RequestId() << std::endl;
+        }
+
+    }
+
+    /* 完成分片上传 */
+    CompleteMultipartUploadRequest request(BucketName, ObjectName);
+    request.setUploadId(uploadId);
+    request.setPartList(partETagList);
+
+    auto outcome = client.CompleteMultipartUpload(request);
+
+    if (!outcome.isSuccess()) {
+        /* 异常处理 */
+        std::cout << "CompleteMultipartUpload fail" <<
+        ",code:" << outcome.error().Code() <<
+        ",message:" << outcome.error().Message() <<
+        ",requestId:" << outcome.error().RequestId() << std::endl;
+        ShutdownSdk();
+        return -1;
+    }
+
+    /* 释放网络等资源 */
+    ShutdownSdk();
+    return 0;
+}
 
 /**
  * download file to specified file
