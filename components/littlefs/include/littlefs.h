@@ -97,24 +97,16 @@ int32_t littlefs_unregister(const char *mnt_path);
  */
 int littlefs_format(const char *partition);
 
-static int32_t lfs_vfs_open(vfs_file_t *fp, const char *path, int flags);
-static int32_t lfs_vfs_close(vfs_file_t *fp);
-static int32_t lfs_vfs_read(vfs_file_t *fp, char *buf, uint32_t len);
-static int32_t lfs_vfs_write(vfs_file_t *fp, const char *buf, uint32_t len);
-static uint32_t lfs_vfs_lseek(vfs_file_t *fp, int64_t off, int32_t whence);
-static int32_t lfs_vfs_sync(vfs_file_t *fp);
-static int32_t lfs_vfs_fstat(vfs_file_t *fp, vfs_stat_t *st);
-static int32_t lfs_vfs_stat(vfs_file_t *fp, const char *path, vfs_stat_t *st);
-static int32_t lfs_vfs_remove(vfs_file_t *fp, const char *path);
-static int32_t lfs_vfs_rename(vfs_file_t *fp, const char *oldpath, const char *newpath);
-static vfs_dir_t *lfs_vfs_opendir(vfs_file_t *fp, const char *path);
-static vfs_dirent_t *lfs_vfs_readdir(vfs_file_t *fp, vfs_dir_t *dir);
-static int32_t lfs_vfs_closedir(vfs_file_t *fp, vfs_dir_t *dir);
-static int32_t lfs_vfs_mkdir(vfs_file_t *fp, const char *path);
-static int32_t lfs_vfs_rmdir (vfs_file_t *fp, const char *path);
-static void lfs_vfs_rewinddir(vfs_file_t *fp, vfs_dir_t *dir);
-static int32_t lfs_vfs_telldir(vfs_file_t *fp, vfs_dir_t *dir);
-static void lfs_vfs_seekdir(vfs_file_t *fp, vfs_dir_t *dir, int32_t loc);
+int32_t lfs_vfs_Open(vfs_file_t *fp, const char *path, int flags);
+int32_t lfs_vfs_Close(vfs_file_t *fp);
+int32_t lfs_vfs_Read(vfs_file_t *fp, char *buf, uint32_t len);
+int32_t lfs_vfs_Write(vfs_file_t *fp, const char *buf, uint32_t len);
+uint32_t lfs_vfs_Lseek(vfs_file_t *fp, int64_t off, int32_t whence);
+int32_t lfs_vfs_Sync(vfs_file_t *fp);
+int32_t lfs_vfs_Fstat(vfs_file_t *fp, vfs_stat_t *st);
+int32_t lfs_vfs_Stat(vfs_file_t *fp, const char *path, vfs_stat_t *st);
+int32_t lfs_vfs_Remove(vfs_file_t *fp, const char *path);
+int32_t lfs_vfs_Rename(vfs_file_t *fp, const char *oldpath, const char *newpath);
 
 #ifdef AOS_COMP_NFTL
 /**

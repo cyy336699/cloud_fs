@@ -8,13 +8,76 @@
 #include <aos/vfs.h>
 #include "cloud_fs_vfs.h"
 
+extern Cloud_Dir cloud_main_dir;
+
+static void cloud_fs_dir_init(int argc, char **argv)
+{
+    printf("***********start test cloud_fs_dir_init by panic***********\r\n");
+
+    cloud_fs_register("/cloud");
+
+    aos_rmdir("/cloud");
+    aos_mkdir("/cloud/test");
+
+    cloud_fs_dir_sync();
+    cloud_main_dir.listDir(0);
+
+    printf("***********test cloud_fs_dir_init by panic well!!!***********\r\n");
+    return;    
+}
+
+static void cloud_fs_dir_test(int argc, char **argv)
+{
+    printf("***********start test cloud_fs_dirby panic***********\r\n");
+
+    int ret = 0;
+
+    aos_mkdir("/cloud/test/testdir1");
+    aos_mkdir("/cloud/test/testdir2");
+    printf("mkdir well!!!\r\n");
+    cloud_main_dir.listDir(0);
+
+    aos_dir_t *dir = aos_opendir("/cloud/test");
+    printf("opendir well!!!\r\n");
+
+    aos_dirent_t *dp = NULL;
+    do {
+        dp = aos_readdir(dir);
+        if (dp)
+            printf("readdir: %s\r\n", dp->d_name);
+    } while (dp != NULL);
+
+    ret = aos_telldir(dir);
+    printf("tell: %d\n", ret);
+
+    aos_rewinddir(dir);
+    printf("rewinddir well!!!\r\n");
+
+    dp = aos_readdir(dir);
+    printf("readdir: %s\r\n", dp->d_name);
+
+    aos_seekdir(dir, 0);
+    printf("seekdir well!!!\r\n");
+
+    dp = aos_readdir(dir);
+    printf("readdir: %s\r\n", dp->d_name);
+
+    aos_closedir(dir);
+    printf("close dir well!!!\r\n");
+
+    aos_rmdir("/cloud/test");
+    printf("rmdir well!!!\r\n");
+    cloud_main_dir.listDir(0);
+
+    printf("***********test cloud_fs_dir by panic well!!!***********\r\n");
+    return;    
+}
+
 static void cloud_fs_test(int argc, char **argv)
 {
     printf("***********start test cloud_fs by panic***********\r\n");
     
-    // cloud_fs register test
-    /*cloud_fs_register("/cloud");
-    char buf[8] = {0};
+    /*char buf[8] = {0};
     aos_open("/cloud/a.txt", 0);
     aos_close(1);
     aos_read(1, buf, 8);
@@ -97,8 +160,11 @@ static void cloud_fs_test(int argc, char **argv)
     // assert(ret == 0);
 
     printf("***********test cloud_fs by panic well!!!***********\r\n");
+    return;
 }
 
 #if AOS_COMP_CLI
 ALIOS_CLI_CMD_REGISTER(cloud_fs_test, cloud_fs_test, cloud fs test demo)
+ALIOS_CLI_CMD_REGISTER(cloud_fs_dir_init, cloud_fs_dir_init, cloud fs dir init)
+ALIOS_CLI_CMD_REGISTER(cloud_fs_dir_test, cloud_fs_dir_test, cloud fs dir test)
 #endif

@@ -2,7 +2,7 @@
 #include <fstream>
 #include "string.h"
 #include "oss_def.h"
-#include "alibabacloud/oss/OssClient.h"
+#include <alibabacloud/oss/OssClient.h>
 #include <vector>
 
 using namespace AlibabaCloud::OSS;
@@ -163,6 +163,57 @@ int cloud_fs_oss_uploadFile(char * localfilepath, char * bucketName, char * file
 }
 
 /**
+ * upload content
+ * @param bucketName: If it is NULL, it defaults to Buckets
+ * @return 0 for ok, negative number for error.
+ */
+int cloud_fs_oss_uploadContent(char * bucketName, char * filename)
+{
+    std::string BucketName;
+    std::string ObjectName ;
+
+    char *pfile_path,file_path[1024];
+
+    if (bucketName == NULL) 
+    {
+        BucketName = Buckets;
+    }
+    else 
+    {
+        BucketName = bucketName;
+    }
+
+    memset(file_path,0,1024);
+    pfile_path = filename;
+    strncpy(file_path,&pfile_path[1],strlen(pfile_path)-1);
+    ObjectName = file_path;
+
+    InitializeSdk();
+
+    ClientConfiguration conf;
+    OssClient client(Endpoint, AccessKeyId, AccessKeySecret, conf);
+
+    std::shared_ptr<std::iostream> content = std::make_shared<std::stringstream>();
+    *content << "";
+
+    PutObjectRequest request(BucketName, ObjectName, content);
+
+    auto outcome = client.PutObject(request);
+
+    if (!outcome.isSuccess()) {
+        std::cout << "PutObject fail" <<
+                  ",code:" << outcome.error().Code() <<
+                  ",message:" << outcome.error().Message() <<
+                  ",requestId:" << outcome.error().RequestId() << std::endl;
+        ShutdownSdk();
+        return -2;
+    }
+
+    ShutdownSdk();
+    return 0;
+}
+
+/**
  * upload specified file with breakpoint resume
  * @param localfilepath: absolute path,e.g.: '/a/b/c/d.txt'
  * @param bucketName: If it is NULL, it defaults to Buckets
@@ -172,6 +223,9 @@ int cloud_fs_oss_uploadFile_breakpoint_resume(char * localfilepath, char * bucke
 {
     std::string BucketName;
     std::string ObjectName;
+    std::string CheckpointFilePath = filename;
+    CheckpointFilePath = "/data/checkpoint/" + CheckpointFilePath;
+    std::string localfile_path = localfilepath;
 
     char *pfile_path,file_path[1024];
 
@@ -196,26 +250,25 @@ int cloud_fs_oss_uploadFile_breakpoint_resume(char * localfilepath, char * bucke
 
     InitializeSdk();
 
-    ClientConfiguration conf;
-    OssClient client(Endpoint, AccessKeyId, AccessKeySecret, conf);
+    // ClientConfiguration conf;
+    // OssClient client(Endpoint, AccessKeyId, AccessKeySecret, conf);
 
-    //不设置checkpointDir代表默认与该文件下载时DownloadFile同目录
-    UploadObjectRequest request(BucketName, ObjectName, localfilepath);
-    //将默认的分块大小8M调整为128K，以符合128K~128M使用断点续传的要求
-    request.setPartSize(128*1024);
+    // UploadObjectRequest request(BucketName, ObjectName, localfile_path, CheckpointFilePath);
+    // //将默认的分块大小8M调整为128K，以符合128K~128M使用断点续传的要求
+    // request.setPartSize(128*1024);
 
-    //断点续传函数
-    auto outcome = client.ResumableUploadObject(request);
+    // //断点续传函数
+    // auto outcome = client.ResumableUploadObject(request);
 
-    if (!outcome.isSuccess()) {
-        /* 异常处理 */
-        std::cout << "ResumableUploadObject fail" <<
-        ",code:" << outcome.error().Code() <<
-        ",message:" << outcome.error().Message() <<
-        ",requestId:" << outcome.error().RequestId() << std::endl;
-        ShutdownSdk();
-        return -1;
-    }
+    // if (!outcome.isSuccess()) {
+    //     /* 异常处理 */
+    //     std::cout << "ResumableUploadObject fail" <<
+    //     ",code:" << outcome.error().Code() <<
+    //     ",message:" << outcome.error().Message() <<
+    //     ",requestId:" << outcome.error().RequestId() << std::endl;
+    //     ShutdownSdk();
+    //     return -1;
+    // }
 
     /* 释放网络等资源 */
     ShutdownSdk();
@@ -690,6 +743,12 @@ int cloud_fs_oss_listfiles(char * filepath, char * bucketName, std::vector<std::
     pfile_path = filepath;
     strncpy(file_path,&pfile_path[0],strlen(pfile_path));
     ObjectName = file_path;
+    if (ObjectName.size() >= 1) {
+        ObjectName = ObjectName.substr(1);
+    }
+    else {
+        ObjectName = "";
+    }
 
      InitializeSdk();
 
@@ -793,7 +852,7 @@ long int cloud_fs_oss_deleteFile(char * filepath, char * bucketName)
  * @param bucketName: If it is NULL, it defaults to Buckets
  * @return 0 for ok, negative number for error.
  */
-long int cloud_fs_oss_deleteDir(char * dirpath, char * bucketName)
+long int cloud_fs_oss_deleteDir(char * dirpath, char * bucketName, int flag)
 {
     std::string BucketName;
     std::string ObjectName;
@@ -809,15 +868,20 @@ long int cloud_fs_oss_deleteDir(char * dirpath, char * bucketName)
         BucketName = bucketName;
     }
 
-    if (dirpath == NULL) 
-    {
-        return -1;
-    }
+    if (flag != 1) {
+            if (dirpath == NULL) 
+        {
+            return -1;
+        }
 
-    memset(dir_path,0,1024);
-    pdir_path = dirpath;
-    strncpy(dir_path,&pdir_path[1],strlen(pdir_path)-1);
-    ObjectName = dir_path;
+        memset(dir_path,0,1024);
+        pdir_path = dirpath;
+        strncpy(dir_path,&pdir_path[1],strlen(pdir_path)-1);
+        ObjectName = dir_path;
+    }
+    else {
+        ObjectName = "";
+    }
 
     InitializeSdk();
 
@@ -829,7 +893,7 @@ long int cloud_fs_oss_deleteDir(char * dirpath, char * bucketName)
 
     do {
             ListObjectsRequest request(BucketName);
-            request.setPrefix(dirpath);
+            request.setPrefix(ObjectName);
             request.setMarker(nextMarker);
             auto outcome = client.ListObjects(request);
 

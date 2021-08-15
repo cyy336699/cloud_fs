@@ -22,7 +22,7 @@ int application_start(int argc, char *argv[])
 
     // aos_set_log_level(AOS_LL_DEBUG);
     event_service_init(NULL);
-    // netmgr_service_init(NULL); //添加网络
+    netmgr_service_init(NULL); //添加网络
 
     // aos_rmdir("/data/cloud");
     // aos_mkdir("/data/cloud");

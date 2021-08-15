@@ -1392,6 +1392,38 @@ int littlefs_format(const char *partition)
     return ret < 0 ? ret : 0;
 }
 
+int32_t lfs_vfs_Open(vfs_file_t *fp, const char *path, int flags) {
+    return lfs_vfs_open(fp, path, flags);
+}
+
+int32_t lfs_vfs_Close(vfs_file_t *fp) {
+    return lfs_vfs_close(fp);
+}
+
+int32_t lfs_vfs_Read(vfs_file_t *fp, char *buf, uint32_t len) {
+    return lfs_vfs_read(fp, buf, len);
+}
+
+int32_t lfs_vfs_Write(vfs_file_t *fp, const char *buf, uint32_t len) {
+    return lfs_vfs_write(fp, buf, len);
+}
+
+uint32_t lfs_vfs_Lseek(vfs_file_t *fp, int64_t off, int32_t whence) {
+    return lfs_vfs_lseek(fp, off, whence);
+}
+
+int32_t lfs_vfs_Sync(vfs_file_t *fp) {
+    return lfs_vfs_sync(fp);
+}
+
+int32_t lfs_vfs_Remove(vfs_file_t *fp, const char *path) {
+    return lfs_vfs_remove(fp, path);
+}
+
+int32_t lfs_vfs_Rename(vfs_file_t *fp, const char *oldpath, const char *newpath) {
+    return lfs_vfs_rename(fp, oldpath, newpath);
+}
+
 #ifdef AOS_COMP_NFTL
 int littlefs_clean_partition(const char *partition)
 {

@@ -71,7 +71,7 @@ public:
             return 0;
         }
         else {
-            std::string dirname = name.substr(1, index);
+            std::string dirname = name.substr(1, index - 1);
             std::string thenname = name.substr(index);
             int i = 0, flag = -1;
             for (i = 0; i < subdirs.size(); i++) {
@@ -105,11 +105,8 @@ public:
         if (mainflag) {
             dirname = "/";
         }
-        else if (name == "/") {
-            dirname = "/" + this->name;
-        }
         else {
-            dirname = name + "/" + this->name;
+            dirname = name + this->name + "/";
         }
 
         std::vector<std::string> allFiles(1, "");
@@ -123,17 +120,30 @@ public:
 
         for (std::string file : allFiles) 
         {
+            int tmp = file.find_last_of("/");
+            if (tmp >= 0) {
+                file = file.substr(tmp + 1);
+            }
             if (file == "" || file == "_cloud_tmp_file.txt") {
                 continue;
             }
+            // printf("file: %s\n", file.c_str());
             Cloud_File tmpfile(file);
             subfiles.push_back(tmpfile);
         }
 
         for (std::string dir : allDirs) {
+            if (dir[dir.size() - 1] == '/') {
+                dir = dir.substr(0, dir.size() - 1);
+            }
+            int tmp = dir.find_last_of("/");
+            if (tmp >= 0) {
+                dir = dir.substr(tmp + 1);
+            }
             if (dir == "") {
                 continue;
             }
+            // printf("dir: %s\n", dir.c_str());
             Cloud_Dir tmpdir(dir);
             if (!tmpdir.dirsync(dirname)) {
                 return 0;
@@ -160,7 +170,7 @@ public:
             return flag;
         }
         else {
-            std::string dirname = name.substr(1, index);
+            std::string dirname = name.substr(1, index - 1);
             std::string thenname = name.substr(index);
             int i = 0, flag = -1;
             for (i = 0; i < subdirs.size(); i++) {
@@ -181,7 +191,7 @@ public:
     }
 
     std::string getsubname() {
-        if (pos >= subfiles.size() + subdirs.size()) {
+        if (pos >= subfiles.size() + subdirs.size() + 1) {
             return "";
         }
         if (pos < subfiles.size()) {
@@ -208,7 +218,7 @@ public:
             return ;
         }
         else {
-            std::string dirname = name.substr(1, index);
+            std::string dirname = name.substr(1, index - 1);
             std::string thenname = name.substr(index);
             int i = 0, flag = -1;
             for (i = 0; i < subdirs.size(); i++) {
@@ -244,7 +254,7 @@ public:
             return ;
         }
         else {
-            std::string dirname = name.substr(1, index);
+            std::string dirname = name.substr(1, index - 1);
             std::string thenname = name.substr(index);
             int i = 0, flag = -1;
             for (i = 0; i < subdirs.size(); i++) {
@@ -283,7 +293,7 @@ public:
             return;
         }
         else {
-            std::string dirname = name.substr(1, index);
+            std::string dirname = name.substr(1, index - 1);
             std::string thenname = name.substr(index);
             int i = 0, flag = -1;
             for (i = 0; i < subdirs.size(); i++) {
@@ -319,7 +329,7 @@ public:
             return ;
         }
         else {
-            std::string dirname = name.substr(1, index);
+            std::string dirname = name.substr(1, index - 1);
             std::string thenname = name.substr(index);
             int i = 0, flag = -1;
             for (i = 0; i < subdirs.size(); i++) {
@@ -338,6 +348,24 @@ public:
             return ;
         }
     }
+
+    void listDir(int space) {
+        int i = 0;
+        for (i = 0; i < space; i++) {
+            printf(" ");
+        }
+        printf("%s: ", this->name.c_str());
+        for ( i =0 ; i < subfiles.size(); i++) {
+            printf("%s", subfiles[i].getname().c_str());
+            if (i < (subfiles.size() - 1)) {
+                printf(", ");
+            }
+        }
+        printf("\n");
+        for (i = 0; i < subdirs.size(); i++) {
+            subdirs[i].listDir(space + 4);
+        }
+    }
 };
 
 typedef struct _Cloud_Vfs_Dir{
@@ -345,5 +373,3 @@ typedef struct _Cloud_Vfs_Dir{
     Cloud_Dir cloud_dir;
     vfs_dirent_t vdirent;
 } Cloud_Vfs_Dir;
-
-Cloud_Dir cloud_main_dir;

@@ -14,6 +14,7 @@
 #include <vector>
 #include <hash_map>
 #include <math.h>
+#include <fstream>
 
 #include "../cloud_fs_oss/oss_def.h"
 #include "littlefs.h"
@@ -26,7 +27,7 @@
 
 using namespace __gnu_cxx;
 
-extern Cloud_Dir cloud_main_dir;
+Cloud_Dir cloud_main_dir;
 static vfs_filesystem_ops_t cloud_fs_ops;
 
 //路径结构体，用于存储local路径和oss路径
@@ -38,7 +39,7 @@ struct oss_and_local {
 static hash_map <char*, oss_and_local*> fp_path_map; //用于存储fp为键值，路径结构体指针为value的hashmap
 static hash_map <char*, Timer*> fp_timer_map; //用于存储fp为键值，Timer类指针为value的hashmap。用于标示哪些fp对应的文件正在上传（已绑定timer）
 
-int64_t getFileSize(const std::string& file)
+int64_t get_file_size(const std::string& file)
 {
     std::fstream f(file, std::ios::in | std::ios::binary);
     f.seekg(0, f.end);
@@ -69,7 +70,7 @@ void oss_file_upload(void* arg) {
         temp = it->second; //用temp存储fp对应的两个路径信息
 
         //调用getFileSize函数获取待上传文件的大小
-        int64_t filesize = getFileSize(temp->localfilepath);
+        int64_t filesize = get_file_size(temp->localfilepath);
         //根据文件大小判断采用何种上传方式
         //文件大小<=128K时，采用简单直接上传方式
         if (filesize <= 128 * 1024) { 
@@ -169,7 +170,7 @@ static int32_t cloud_vfs_open(vfs_file_t *fp, const char *filepath, int32_t flag
 
     if(flags & O_CREAT){
         int32_t new_flag = flags & (~O_CREAT);
-        fd= lfs_vfs_open(&fp_lfs, lfPath.c_str(),new_flag);
+        fd= lfs_vfs_Open(&fp_lfs, lfPath.c_str(),new_flag);
     }
 
     if (fd <= 0) {
@@ -177,13 +178,13 @@ static int32_t cloud_vfs_open(vfs_file_t *fp, const char *filepath, int32_t flag
         if (ret != 1) {
             printf("cloud has no such file!\r\n");
 
-            fd= lfs_vfs_open(&fp_lfs, lfPath.c_str(),flags);
+            fd= lfs_vfs_Open(&fp_lfs, lfPath.c_str(),flags);
             return fd;
         }
 
         ret = cloud_fs_oss_downloadFile2File(const_cast<char*>(downloadFilePath.c_str()), NULL, const_cast<char*>(lfPath.c_str()));
         if (ret == 0) {
-            fd= lfs_vfs_open(&fp_lfs, lfPath.c_str(),flags);
+            fd= lfs_vfs_Open(&fp_lfs, lfPath.c_str(),flags);
             return fd;
         }
         else {
@@ -201,7 +202,7 @@ static int32_t cloud_vfs_read(vfs_file_t *fp, char *buf, uint32_t len)
     vfs_file_t fp_lfs =*fp;
     fp_lfs.node->i_name=(char*)LF_PATH;
 
-    int32_t ret =lfs_vfs_read(&fp_lfs,buf,len);
+    int32_t ret =lfs_vfs_Read(&fp_lfs,buf,len);
     return ret;
 }
 
@@ -210,7 +211,7 @@ static int32_t cloud_vfs_write(vfs_file_t *fp, const char *buf, uint32_t len)
     vfs_file_t fp_lfs =*fp;
     fp_lfs.node->i_name=(char*)LF_PATH;
 
-    int32_t ret =lfs_vfs_write(&fp_lfs, buf, len);
+    int32_t ret =lfs_vfs_Write(&fp_lfs, buf, len);
 
     hash_map<char*, Timer*>::iterator it = fp_timer_map.find((char*)fp);
     if(it == fp_timer_map.end()) {
@@ -234,7 +235,7 @@ static int32_t cloud_vfs_sync(vfs_file_t *fp)
     vfs_file_t fp_lfs =*fp;
     fp_lfs.node->i_name=(char*)LF_PATH;
     //先在本地littlefs系统里进行同步
-    int32_t ret =lfs_vfs_sync(&fp_lfs);
+    int32_t ret =lfs_vfs_Sync(&fp_lfs);
 
     printf("local sync is done!\n");
 
@@ -273,7 +274,7 @@ static int32_t cloud_vfs_close(vfs_file_t *fp)
     vfs_file_t fp_lfs =*fp;
     fp_lfs.node->i_name=(char*)LF_PATH;
    
-    int32_t ret =lfs_vfs_close(&fp_lfs);
+    int32_t ret =lfs_vfs_Close(&fp_lfs);
     return ret;
 }
 
@@ -314,7 +315,7 @@ static int32_t cloud_vfs_rename(vfs_file_t *fp,const char *oldpath, const char *
             return -7;
         }
 
-        int32_t ru =lfs_vfs_rename(&fp_lfs, oldLfPath.c_str(), newLfPath.c_str());
+        int32_t ru =lfs_vfs_Rename(&fp_lfs, oldLfPath.c_str(), newLfPath.c_str());
 
         //如果要关闭延时上传机制，就把sync函数注释掉，并恢复uploadFile函数即可
         cloud_vfs_sync(fp);
@@ -340,7 +341,7 @@ static  uint32_t  cloud_vfs_lseek(vfs_file_t *fp, int64_t off, int32_t whence)
     vfs_file_t fp_lfs =*fp;
     fp_lfs.node->i_name=(char*)LF_PATH;
 
-    uint32_t  ret =lfs_vfs_lseek(&fp_lfs, off, whence);
+    uint32_t  ret =lfs_vfs_Lseek(&fp_lfs, off, whence);
     return ret;
 }
 
@@ -376,6 +377,7 @@ static int32_t cloud_vfs_remove(vfs_file_t *fp, const char *filepath)
 static vfs_dir_t *cloud_vfs_opendir(vfs_file_t *fp, const char *path)
 {
     std::string dirname = path;
+    dirname = dirname.substr(6);
     int flag = cloud_main_dir.dirExists(dirname);
     if (flag == -1) {
         return NULL;
@@ -386,6 +388,7 @@ static vfs_dir_t *cloud_vfs_opendir(vfs_file_t *fp, const char *path)
         return NULL;
     }
     cloud_vfs_dir->cloud_dir = cloud_main_dir.getdir(flag);
+     // printf("open here pos: %d\r\n", cloud_vfs_dir->cloud_dir.pos);
     fp->f_arg=(void*)cloud_vfs_dir;
     return (vfs_dir_t *)cloud_vfs_dir;
 }
@@ -401,9 +404,11 @@ static vfs_dirent_t *cloud_vfs_readdir(vfs_file_t *fp, vfs_dir_t *dir){
     cloud_fs_dir->vdirent.d_ino = 0;
     cloud_fs_dir->vdirent.d_type = 0;
 
-    std::string name = cloud_fs_dir->cloud_dir.getsubname() + "\0";
+     std::string name = cloud_fs_dir->cloud_dir.getsubname();
 
     strncpy(cloud_fs_dir->vdirent.d_name, name.c_str(), 128);
+
+    cloud_fs_dir->cloud_dir.pos += 1;
 
     return &cloud_fs_dir->vdirent;
 }
@@ -413,7 +418,6 @@ static int32_t cloud_vfs_closedir(vfs_file_t *fp, vfs_dir_t *dir){
     if (!cloud_fs_dir) {
         return NULL;
     }
-    delete cloud_fs_dir;
     return 0;
 }
 
@@ -454,28 +458,35 @@ static void cloud_vfs_seekdir(vfs_file_t *fp, vfs_dir_t *dir, int32_t loc)
 
 static int32_t cloud_vfs_mkdir(vfs_file_t *fp, const char *path) {
     std::string name = path;
-    cloud_main_dir.mkdir(path);
+    name = name.substr(6);
+    cloud_main_dir.mkdir(name);
 
     std::string localpath = "/data/_cloud_tmp_file.txt";
-    std::string filepath = name + "/_cloud_tmp_file.txt";
-    int flag = cloud_fs_oss_uploadFile(const_cast<char *>(localpath.c_str()), NULL, const_cast<char *>(filepath.c_str()));
+    std::string filepath = name + "/";
+    int flag = cloud_fs_oss_uploadContent(NULL, const_cast<char *>(filepath.c_str()));
     if (flag < 0) {
         printf("mkdir has something wrong!!!\r\n");
         return 0;
     }
-    printf("mkdir well!!!\r\n");
     return 0;
 }
 
 static int32_t cloud_vfs_rmdir(vfs_file_t *fp, const char *path) {
     std::string name = path;
-    cloud_main_dir.rmdir(path);
-
-    if (cloud_fs_oss_deleteDir(const_cast<char*>(path), NULL) < 0 ) {
-        printf("rmdir has something wrong!!!\r\n");
+    if (name == "/cloud") {
+        if (cloud_fs_oss_deleteDir(const_cast<char*>(name.c_str()), NULL, 1) < 0 ) {
+            printf("rmdir has something wrong!!!\r\n");
+            return -1;
+        }
         return 0;
     }
-    printf("rmdir well!!!\r\n");
+    name = name.substr(6);
+    cloud_main_dir.rmdir(name);
+
+     if (cloud_fs_oss_deleteDir(const_cast<char*>(name.c_str()), NULL, 0) < 0 ) {
+        printf("rmdir has something wrong!!!\r\n");
+        return -1;
+    }
     return 0;
 }
 
@@ -513,10 +524,11 @@ int32_t cloud_fs_unregister(const char *cloudMonut)
 }
 
 void cloud_fs_dir_sync() {
-    cloud_main_dir.setDir("/cloud", 1);
+    cloud_main_dir.setDir("cloud", 1);
 
     int fd = aos_open("/data/_cloud_tmp_file.txt", O_CREAT | O_RDWR);
     aos_close(fd);
 
     cloud_main_dir.dirsync("/");
+    return;
 }
