@@ -186,6 +186,33 @@ public:
         }
     }
 
+    Cloud_Dir finddir(std::string name) {
+        int index = name.find("/", 1);
+        if (index <= 0) {
+            std::string dirname = name.substr(1);
+            int i = 0, flag = -1;
+            for (i = 0; i < subdirs.size(); i++) {
+                if (subdirs[i].getname() == dirname) {
+                    flag = i;
+                    break;
+                }
+            }
+            return subdirs[i];
+        }
+        else {
+            std::string dirname = name.substr(1, index - 1);
+            std::string thenname = name.substr(index);
+            int i = 0, flag = -1;
+            for (i = 0; i < subdirs.size(); i++) {
+                if (subdirs[i].getname() == dirname) {
+                    flag = i;
+                    break;
+                }
+            }
+            return subdirs[flag].finddir(thenname);
+        }
+    }
+
     Cloud_Dir getdir(int flag) {
         return subdirs[flag];
     }

@@ -11,404 +11,163 @@
 #include <vector>
 #include "cloud_fs.h"
 #include "../cloud_fs_oss/oss_def.h"
+#include "cloud_fs_vfs.h"
+
+extern Cloud_Dir cloud_main_dir;
 
 int cloud_fs_read(char * filepath)
 {
-    std::string path = filepath;
-    path = PATH + path;
-    std::string downloadFilePath = filepath;
-    downloadFilePath = "/" + downloadFilePath;
+    int fd = aos_open(filepath, O_RDWR);
 
-    int fd1, buff[1024] = {0};
-    char content[1030];
-
-    fd1 = aos_open(path.c_str(),  O_RDWR);
-    if (fd1 <= 0) {
-        // printf("local has no such file\r\n");
-        // printf("should oss download file\r\n");
-        
-        int ret;
-        ret = cloud_fs_oss_isFileExist(const_cast<char*>(downloadFilePath.c_str()), NULL);
-        if (ret != 1) {
-            printf("cloud has no such file!\r\n");
-            return -1;
-        }
-        ret = cloud_fs_oss_downloadFile(const_cast<char*>(downloadFilePath.c_str()), NULL, content);
-        if (ret == 0) {
-            // printf("download OK!\r\n");
-            // printf("filepath:%s\r\n", const_cast<char*>(path.c_str()));
-            fd1 = aos_open(path.c_str(),  O_CREAT | O_RDWR | O_APPEND);
-            if (fd1 <= 0) {
-                printf("open file wrong!\r\n");
-                return -2;
-            }
-            // printf("content:%s\r\n", content);
-            ret = aos_write(fd1, content, 1024);
-            if(ret <= 0)
-            {
-                printf("write local file wrong! ret:%d\r\r\n", ret);
-                return -3;
-            }
-            aos_close(fd1);
-            
-            fd1 = aos_open(path.c_str(),  O_RDWR);
-            if (fd1 <= 0) {
-                printf("open local file wrong\r\n");
-                return -2;
-            }
-            ret = aos_read(fd1, buff, 1024);
-            if (ret > 0) {
-                printf("cloud_read: %s\r\n", buff);
-            }else{
-                printf("cloud_read file wrong! ret:%d\r\r\n", ret);
-                return -4;
-            }
-            aos_close(fd1);
-        }
-        else {
-            printf("download error!\r\n");
-            return -5;
-        }
-    } 
-    else {
-        int ret;
-        ret = aos_read(fd1, buff, 1024);
-        if (ret > 0) {
-            printf("cloud_read: %s\r\n", buff);
-        }else{
-            printf("cloud_read file wrong! ret:%d\r\r\n", ret);
-            return -4;
-        }
-        aos_close(fd1);
+    if (fd < 0) {
+        printf("file does not exist!\r\n");
+        return -1;
     }
+
+    char buf[1024] = {0};
+    int ret = aos_read(fd, buf, 1023);
+    buf[ret] = '\0';
+    printf("%s\r\n", buf);
+
+    aos_close(fd);
     return 0;
 }
 
 int cloud_fs_write(char * filepath, char * content)
 {
-    std::string path = filepath;
-    path = PATH + path;
-    std::string downloadFilePath = filepath;
-    downloadFilePath = "/" + downloadFilePath;
+    int fd = aos_open(filepath, O_RDWR);
 
-    int fd1, buff[1024] = {0}, ret;
-
-    fd1 = aos_open(path.c_str(),  O_RDWR);
-
-    if (fd1 > 0) {
-        ret = aos_close(fd1);
-        if (ret < 0) {
-            printf("close file failed\r\n");
-            return -1;
-        }
-        ret = aos_remove(path.c_str());
-        if (ret < 0) {
-            printf("remove file failed\r\n");
-            return -2;
-        }
+    if (fd < 0) {
+        printf("file does not exist!\r\n");
+        return -1;
     }
 
-    fd1 = aos_open(path.c_str(),  O_CREAT | O_RDWR | O_APPEND);
-    if (fd1 <= 0) {
-        printf("open file wrong!\r\n");
-        return -3;
+    std::string _content = content;
+    int ret = aos_write(fd, content, _content.size());
+    if (ret == _content.size()) {
+        printf("write cloud file well!!!\r\n");
+        aos_close(fd);
+        return 0;
     }
-    ret = aos_write(fd1, content, 1024);
-    if (ret <= 0) {
-        printf("write file wrong!\r\n");
-        return -4;
+    else {
+        printf("write cloud file failed!!!\r\n");
+        aos_close(fd);
+        return -1;
     }
-    aos_close(fd1);
-
-    ret = cloud_fs_oss_isFileExist(const_cast<char*>(downloadFilePath.c_str()), NULL);
-    if (ret == 1) {
-        ret = cloud_fs_oss_deleteFile(const_cast<char*>(downloadFilePath.c_str()), NULL);
-        if (ret != 0) {
-            printf("delete file wrong!\r\n");
-            return -5;
-        }
-    }
-
-    ret = cloud_fs_oss_uploadFile(const_cast<char*>(path.c_str()), NULL, const_cast<char*>(downloadFilePath.c_str()));
-    if (ret != 0) {
-        printf("upload file failed!\r\n");
-        return -6;
-    }
-
-    return 0;
 }
 
 int cloud_fs_touch(char * filepath)
 {
-    std::string path = filepath;
-    path = PATH + path;
-    std::string downloadFilePath = filepath;
-    downloadFilePath = "/" + downloadFilePath;
+    int fd = aos_open(filepath, O_RDWR | O_APPEND);
 
-    int fd1, buff[1024] = {0}, ret;
+    if (fd >0) {
+        printf("file already exists!\r\n");
+        aos_close(fd);
+        return 0;
+    }
 
-    ret = cloud_fs_oss_isFileExist(const_cast<char*>(downloadFilePath.c_str()), NULL);
-    if (ret == 1) {
-        printf("cloud already has the same file\r\n");
+    fd = aos_open(filepath, O_CREAT | O_RDWR | O_APPEND);
+
+    if (fd < 0) {
+        printf("touch file failed!\r\n");
         return -1;
     }
 
-    fd1 = aos_open(path.c_str(),  O_CREAT | O_RDWR | O_APPEND);
-    if (fd1 <= 0) {
-        printf("open file wrong!\r\n");
-        return -3;
-    }
-    ret = aos_write(fd1, "", 0);
-    if (ret < 0) {
-        printf("write file wrong!\r\n");
-        return -4;
-    }
-    aos_close(fd1);
-
-    ret = cloud_fs_oss_uploadFile(const_cast<char*>(path.c_str()), NULL, const_cast<char*>(downloadFilePath.c_str()));
-    if (ret != 0) {
-        printf("upload file failed!\r\n");
-        return -6;
-    }
-
+    printf("touch file well!!!\r\n");
+    aos_close(fd);
     return 0;
 }
 
 int cloud_fs_rmfile(char * filepath)
 {
-    std::string path = filepath;
-    path = PATH + path;
-    std::string downloadFilePath = filepath;
-    downloadFilePath = "/" + downloadFilePath;
-
-    int fd1, buff[1024] = {0}, ret;
-
-    fd1 = aos_open(path.c_str(),  O_RDWR);
-
-    if (fd1 > 0) {
-        ret = aos_close(fd1);
-        if (ret < 0) {
-            printf("close file failed\r\n");
-            return -1;
-        }
-        ret = aos_remove(path.c_str());
-        if (ret < 0) {
-            printf("remove file failed\r\n");
-            return -2;
-        }
-    }
-
-    ret = cloud_fs_oss_isFileExist(const_cast<char*>(downloadFilePath.c_str()), NULL);
-    if (ret != 1) {
-        printf("cloud doesn't  have the same file, delete file wrong\r\n");
-        return -3;
-    }
-
-    ret = cloud_fs_oss_deleteFile(const_cast<char*>(downloadFilePath.c_str()), NULL);
-    if (ret != 0) {
-        printf("delete cloud file wrong!\r\n");
-        return -4;
-    }
-
-    return 0;
-}
-
-int cloud_fs_lsfile()
-{
-    std::vector<std::string> allFiles(1, "");
-    int ret = cloud_fs_oss_listallfiles("/", NULL, allFiles);
-    if (ret != 0) 
-    {
-        printf("get files list wrong!\r\n");
+    int ret = aos_remove(filepath);
+    if (ret < 0) {
+        printf("Sorry, remove file failed!\r\n");
         return -1;
     }
 
-    for (std::string file : allFiles) 
-    {
-        if (file == "") {
-            continue;
-        }
-        printf("%s ", file.c_str());
-    }
-    printf("\r\n");
+    printf("remove file well!!!\r\n");
+    return 0;
+}
 
+int cloud_fs_lsfile(char * dirpath)
+{
+    std::string dir_path = dirpath;
+
+    int ret = cloud_main_dir.dirExists(dir_path);
+    if (ret < 0) {
+        printf("Sorry, the dir do not exists!\r\n");
+        return -1;
+    }
+
+    cloud_main_dir.finddir(dir_path).listDir(0);
     return 0;
 }
 
 int cloud_fs_move(char  * oldpath, char * newpath)
 {
-    std::string old_path = oldpath;
-    old_path = PATH + old_path;
-    std::string downloadOldFilePath = oldpath;
-    downloadOldFilePath = "/" + downloadOldFilePath;
+    int fd1 = aos_open(oldpath, O_RDWR);
 
-    std::string new_path = newpath;
-    new_path = PATH + new_path;
-    std::string downloadNewFilePath = newpath;
-    downloadNewFilePath = "/" + downloadNewFilePath;
-
-    int fd1, buff[1024] = {0}, ret;
-    char content[1030];
-
-    ret = cloud_fs_oss_isFileExist(const_cast<char*>(downloadOldFilePath.c_str()), NULL);
-    if (ret != 1) {
-        printf("cloud doesn't  have the same file\r\n");
+    if (fd1 < 0) {
+        printf("file does not exist!\r\n");
         return -1;
     }
 
-    ret = cloud_fs_oss_downloadFile(const_cast<char*>(downloadOldFilePath.c_str()), NULL, content);
-    if (ret == 0) {
-        ret = cloud_fs_oss_deleteFile(const_cast<char*>(downloadOldFilePath.c_str()), NULL);
-        if (ret != 0) {
-            printf("delete cloud file wrong!\r\n");
-            return -7;
-        }
+    int fd2 = aos_open(newpath, O_CREAT | O_RDWR | O_APPEND);
 
-        fd1 = aos_open(old_path.c_str(),  O_RDWR);
-        if (fd1 >= 0) {
-            ret = aos_close(fd1);
-            if (ret < 0) {
-                printf("file close error\r\n");
-                return -2;
-            }
-            ret = aos_remove(old_path.c_str());
-            if (ret < 0) {
-                printf("file remove error\r\n");
-                return -3;
-            }
-        }
+    char buf[1024] = {0};
+    int ret = 0;
+    do {
+        ret = aos_read(fd1, buf, 1024);
+        aos_write(fd2, buf, 1024);
+    } while (ret > 0);
 
-        fd1 = aos_open(new_path.c_str(),  O_RDWR);
-        if (fd1 >= 0) {
-            ret = aos_close(fd1);
-            if (ret < 0) {
-                printf("file close error\r\n");
-                return -2;
-            }
-            ret = aos_remove(new_path.c_str());
-            if (ret < 0) {
-                printf("file remove error\r\n");
-                return -3;
-            }
-        }
-        
-        fd1 = aos_open(new_path.c_str(),  O_CREAT | O_RDWR | O_APPEND);
-        if (fd1 <= 0) {
-            printf("open file wrong!\r\n");
-            return -4;
-        }
-        // printf("content:%s\r\n", content);
-        ret = aos_write(fd1, content, 1024);
-        if(ret <= 0)
-        {
-            printf("write local file wrong! ret:%d\r\r\n", ret);
-            return -5;
-        }
-        aos_close(fd1);
+    aos_close(fd1);
+    aos_close(fd2);
 
-        ret = cloud_fs_oss_uploadFile(const_cast<char*>(new_path.c_str()), NULL, const_cast<char*>(downloadNewFilePath.c_str()));
-        if (ret != 0) {
-            printf("upload file failed!\r\n");
-            return -6;
-        }
-    }
-    else {
-        printf("download error!\r\n");
-        return -8;
-    }
-
+    aos_remove(oldpath);
+    printf("move file well!!!\r\n");
     return 0;
 }
 
 int cloud_fs_cp(char  * oldpath, char * newpath)
 {
-    std::string old_path = oldpath;
-    old_path = PATH + old_path;
-    std::string downloadOldFilePath = oldpath;
-    downloadOldFilePath = "/" + downloadOldFilePath;
+    int fd1 = aos_open(oldpath, O_RDWR);
 
-    std::string new_path = newpath;
-    new_path = PATH + new_path;
-    std::string downloadNewFilePath = newpath;
-    downloadNewFilePath = "/" + downloadNewFilePath;
-
-    int fd1, buff[1024] = {0}, ret;
-    char content[1030];
-
-    ret = cloud_fs_oss_isFileExist(const_cast<char*>(downloadOldFilePath.c_str()), NULL);
-    if (ret != 1) {
-        printf("cloud doesn't  have the same file\r\n");
+    if (fd1 < 0) {
+        printf("file does not exist!\r\n");
         return -1;
     }
 
-    ret = cloud_fs_oss_downloadFile(const_cast<char*>(downloadOldFilePath.c_str()), NULL, content);
-    if (ret == 0) {
-        fd1 = aos_open(old_path.c_str(),  O_RDWR);
-        if (fd1 >= 0) {
-            ret = aos_close(fd1);
-            if (ret < 0) {
-                printf("file close error\r\n");
-                return -2;
-            }
-            ret = aos_remove(old_path.c_str());
-            if (ret < 0) {
-                printf("file remove error\r\n");
-                return -3;
-            }
-        }
+    int fd2 = aos_open(newpath, O_CREAT | O_RDWR | O_APPEND);
 
-        fd1 = aos_open(old_path.c_str(),  O_CREAT | O_RDWR | O_APPEND);
-        if (fd1 <= 0) {
-            printf("open file wrong!\r\n");
-            return -4;
-        }
-        // printf("content:%s\r\n", content);
-        ret = aos_write(fd1, content, 1024);
-        if(ret <= 0)
-        {
-            printf("write local file wrong! ret:%d\r\r\n", ret);
-            return -5;
-        }
-        aos_close(fd1);
+    char buf[1024] = {0};
+    int ret = 0;
+    do {
+        ret = aos_read(fd1, buf, 1024);
+        aos_write(fd2, buf, 1024);
+    } while (ret > 0);
 
-        fd1 = aos_open(new_path.c_str(),  O_RDWR);
-        if (fd1 >= 0) {
-            ret = aos_close(fd1);
-            if (ret < 0) {
-                printf("file close error\r\n");
-                return -2;
-            }
-            ret = aos_remove(new_path.c_str());
-            if (ret < 0) {
-                printf("file remove error\r\n");
-                return -3;
-            }
-        }
-        
-        fd1 = aos_open(new_path.c_str(),  O_CREAT | O_RDWR | O_APPEND);
-        if (fd1 <= 0) {
-            printf("open file wrong!\r\n");
-            return -4;
-        }
-        // printf("content:%s\r\n", content);
-        ret = aos_write(fd1, content, 1024);
-        if(ret <= 0)
-        {
-            printf("write local file wrong! ret:%d\r\r\n", ret);
-            return -5;
-        }
-        aos_close(fd1);
+    aos_close(fd1);
+    aos_close(fd2);
 
-        ret = cloud_fs_oss_uploadFile(const_cast<char*>(new_path.c_str()), NULL, const_cast<char*>(downloadNewFilePath.c_str()));
-        if (ret != 0) {
-            printf("upload file failed!\r\n");
-            return -6;
-        }
-    }
-    else {
-        printf("download error!\r\n");
-        return -8;
-    }
+    printf("copy file well!!!\r\n");
+    return 0;
+}
 
+int cloud_fs_mkdir(char *dirpath)
+{
+    std::string dir_path = dirpath;
+    cloud_main_dir.mkdir(dir_path);
+
+    printf("make dir well!!!\r\n");
+    return 0;
+}
+
+int cloud_fs_rmdir(char * dirpath) 
+{
+    cloud_main_dir.rmdir(dirpath);
+
+    printf("remove dir well!!!\r\n");
     return 0;
 }

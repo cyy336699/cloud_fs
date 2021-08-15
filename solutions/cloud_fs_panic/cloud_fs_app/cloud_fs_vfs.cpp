@@ -51,11 +51,11 @@ int64_t get_file_size(const std::string& file)
 //该函数用于回调函数main_timer_call_func调用来将文件上传至OSS
 //参数arg由于timer的要求，需要传入void*，函数内部再转换成vfs_file_t*
 void oss_file_upload(void* arg) {
+    printf("upload arg : %d\r\n", arg);
     printf("upload:  fp_path_map size= %d\r\n", fp_path_map.size());
     printf("upload:  fp_timer_map size= %d\r\n", fp_timer_map.size());
-    vfs_file_t* temp_fp = (vfs_file_t*) arg;
-    hash_map <char*, oss_and_local*>::iterator it = fp_path_map.find((char*) temp_fp);
-    hash_map<char*, Timer*>::iterator iter = fp_timer_map.find((char*) temp_fp);
+    hash_map <char*, oss_and_local*>::iterator it = fp_path_map.find((char*) arg);
+    hash_map<char*, Timer*>::iterator iter = fp_timer_map.find((char*) arg);
     if (it == fp_path_map.end()) { //没找到fp对应的路径信息
         printf("something goes wrong with fp_path_map, fp doesn't exist!\n");
         return;
@@ -111,7 +111,7 @@ void main_timer_call_func(void* timer, void* arg) {
 void flush_delay_time(void* arg) {
     vfs_file_t* fp = (vfs_file_t*) arg;
     //通过fp_timer_map找到fp对应的timer
-    hash_map<char*, Timer*>::iterator iter = fp_timer_map.find((char*) fp);
+    hash_map<char*, Timer*>::iterator iter = fp_timer_map.find((char*) arg);
     if (iter == fp_timer_map.end()) {
         printf("fp-timer map doesn't exist!\n");
         return;
@@ -154,6 +154,7 @@ static int32_t cloud_sync(vfs_file_t *fp) {
         timer.init_ass_timer(ass_timer_call_func, (void*)timer.get_file(), 15000, 1, 1);
         //将新建的Timer类加入hashmap中，键值为fp
         fp_timer_map.insert(make_pair((char*) fp, &timer));
+        printf("sync fp_timer_map : %d\r\n", fp);
     } else {
         Timer* timer = it->second;
         //由于刷新操作，因此对于该文件的访问次数加1
@@ -186,6 +187,8 @@ static int32_t cloud_vfs_open(vfs_file_t *fp, const char *filepath, int32_t flag
     temp->localfilepath = const_cast<char *>(lfPath.c_str());
     temp->ossfilepath = const_cast<char *>(downloadFilePath.c_str());
     fp_path_map.insert(make_pair((char*) fp,  temp));
+    printf("open fp: %d\r\n", fp);
+
 
     int fd = -1, buff[1024] = {0};
     char content[1030];
