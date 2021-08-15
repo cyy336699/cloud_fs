@@ -483,7 +483,7 @@ static int32_t cloud_vfs_rmdir(vfs_file_t *fp, const char *path) {
     name = name.substr(6);
     cloud_main_dir.rmdir(name);
 
-     if (cloud_fs_oss_deleteDir(const_cast<char*>(name.c_str()), NULL, 0) < 0 ) {
+    if (cloud_fs_oss_deleteDir(const_cast<char*>(name.c_str()), NULL, 0) < 0 ) {
         printf("rmdir has something wrong!!!\r\n");
         return -1;
     }

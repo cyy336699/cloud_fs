@@ -867,10 +867,11 @@ long int cloud_fs_oss_deleteDir(char * dirpath, char * bucketName, int flag)
     {
         BucketName = bucketName;
     }
-
+    // printf("%s, %d\r\n", dirpath, flag);
     if (flag != 1) {
-            if (dirpath == NULL) 
+        if (dirpath == NULL) 
         {
+            printf("dirpath == NULL");
             return -1;
         }
 
@@ -878,6 +879,10 @@ long int cloud_fs_oss_deleteDir(char * dirpath, char * bucketName, int flag)
         pdir_path = dirpath;
         strncpy(dir_path,&pdir_path[1],strlen(pdir_path)-1);
         ObjectName = dir_path;
+        if (ObjectName[ObjectName.size() - 1] != '/') {
+            ObjectName = ObjectName + "/";
+        }
+        // printf("ObjectName: %s", ObjectName.c_str());
     }
     else {
         ObjectName = "";
@@ -892,6 +897,7 @@ long int cloud_fs_oss_deleteDir(char * dirpath, char * bucketName, int flag)
     bool isTruncated = false;
 
     do {
+            // printf("1\r\n");
             ListObjectsRequest request(BucketName);
             request.setPrefix(ObjectName);
             request.setMarker(nextMarker);
@@ -908,11 +914,13 @@ long int cloud_fs_oss_deleteDir(char * dirpath, char * bucketName, int flag)
             for (const auto& object : outcome.result().ObjectSummarys()) {
                 DeleteObjectRequest request(BucketName, object.Key());
                 auto delResult = client.DeleteObject(request);
+                // printf("2\r\n");
             }      
             nextMarker = outcome.result().NextMarker();
             isTruncated = outcome.result().IsTruncated();
     } while (isTruncated);
 
     ShutdownSdk();
+    // printf("delete dir well!!\r\n");
     return 0;
 }

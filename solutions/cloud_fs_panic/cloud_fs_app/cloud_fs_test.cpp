@@ -48,7 +48,7 @@ static void cloud_fs_dir_test(int argc, char **argv)
     } while (dp != NULL);
 
     ret = aos_telldir(dir);
-    printf("tell: %d\n", ret);
+    assert(ret == 2);
 
     aos_rewinddir(dir);
     printf("rewinddir well!!!\r\n");
@@ -65,7 +65,8 @@ static void cloud_fs_dir_test(int argc, char **argv)
     aos_closedir(dir);
     printf("close dir well!!!\r\n");
 
-    aos_rmdir("/cloud/test");
+    aos_rmdir("/cloud/test/testdir1");
+    aos_rmdir("/cloud/test/testdir2");
     printf("rmdir well!!!\r\n");
     cloud_main_dir.listDir(0);
 

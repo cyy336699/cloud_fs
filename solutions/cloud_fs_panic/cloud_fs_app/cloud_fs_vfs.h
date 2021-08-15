@@ -207,14 +207,17 @@ public:
             int i = 0, flag = -1;
             for (i = 0; i < subdirs.size(); i++) {
                 if (subdirs[i].getname() == dirname) {
+                    // printf("flag = %d\r\n", flag);
                     flag = i;
                     break;
                 }
             }
-            if (flag == -1 ) {
+            if (flag == -1) {
                 return ;
             }
+            // printf("start erase\r\n");
             subdirs.erase(subdirs.begin() + flag);
+            // printf("erase end\r\n");
             return ;
         }
         else {
