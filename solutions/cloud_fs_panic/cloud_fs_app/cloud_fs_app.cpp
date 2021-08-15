@@ -193,6 +193,14 @@ static void cloud_rmdir(int argc, char **argv)
     }
 }
 
+static void cloud_syncall(int argc, char **argv) {
+    cloud_fs_syncall();
+}
+
+static void cloud_syncdir(int argc, char **argv) {
+    cloud_fs_syncdir();
+}
+
 #if AOS_COMP_CLI
 /* reg args: fun, cmd, description*/
 ALIOS_CLI_CMD_REGISTER(cloud_read, cloud_read, cloud read file command)
@@ -204,4 +212,6 @@ ALIOS_CLI_CMD_REGISTER(cloud_move, cloud_move, cloud move file command)
 ALIOS_CLI_CMD_REGISTER(cloud_cp, cloud_cp, cloud copy file command)
 ALIOS_CLI_CMD_REGISTER(cloud_mkdir, cloud_mkdir, cloud make dir command)
 ALIOS_CLI_CMD_REGISTER(cloud_rmdir, cloud_rmdir, cloud remove dir command)
+ALIOS_CLI_CMD_REGISTER(cloud_syncall, cloud_syncall, cloud sync all files command)
+ALIOS_CLI_CMD_REGISTER(cloud_syncdir, cloud_syncdir, cloud sync dir command)
 #endif

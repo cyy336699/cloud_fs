@@ -81,6 +81,7 @@ void oss_file_upload(void* arg) {
             aos_timer_t tmp = timer->get_ass_timer();
             aos_timer_stop(&tmp);
             fp_timer_map.erase(iter);
+            delete timer;
         }
         oss_and_local* temp = it->second; //用temp存储fp对应的两个路径信息
 
@@ -231,6 +232,14 @@ static int32_t cloud_vfs_open(vfs_file_t *fp, const char *filepath, int32_t flag
                 cloud_main_dir.mkfile(downloadFilePath);
             }
             fp->node->i_name=(char*)CLOUD_PATH;
+            // printf("fd1: %d\r\n", fd);
+            return fd;
+        }
+
+        fd= lfs_vfs_Open(fp, lfPath.c_str(),flags);
+        if (fd >= 0) {
+            fp->node->i_name=(char*)CLOUD_PATH;
+            // printf("fd2: %d\r\n", fd);
             return fd;
         }
 
@@ -238,6 +247,7 @@ static int32_t cloud_vfs_open(vfs_file_t *fp, const char *filepath, int32_t flag
         if (ret == 0) {
             fd= lfs_vfs_Open(fp, lfPath.c_str(),flags);
             fp->node->i_name=(char*)CLOUD_PATH;
+            // printf("fd3: %d\r\n", fd);
             return fd;
         }
         else {
@@ -268,7 +278,7 @@ static int32_t cloud_vfs_write(vfs_file_t *fp, const char *buf, uint32_t len)
     vfs_file_t fp_lfs =*fp;
     fp_lfs.node->i_name=(char*)LF_PATH;
 
-    int32_t ret =lfs_vfs_Write(&fp_lfs, buf, len);
+    int32_t ret = lfs_vfs_Write(&fp_lfs, buf, len);
 
     std::unordered_map<int *, Timer*>::iterator it = fp_timer_map.find((int *)fp);
     if(it == fp_timer_map.end()) {
@@ -394,15 +404,10 @@ static int32_t cloud_vfs_remove(vfs_file_t *fp, const char *filepath)
         return 0;
     }
 
-    std::unordered_map<int *, Timer*>::iterator it = fp_timer_map.find((int *)fp);
-    if (it == fp_timer_map.end()) {
-        ret = cloud_fs_oss_deleteFile(const_cast<char*>(downloadFilePath.c_str()), NULL);
-        if (ret != 0) {
-            printf("delete cloud file wrong!\r\n");
-            return -1;
-        }
-    } else {
-        fp_timer_map.erase(it);
+    ret = cloud_fs_oss_deleteFile(const_cast<char*>(downloadFilePath.c_str()), NULL);
+    if (ret != 0) {
+        printf("delete cloud file wrong!\r\n");
+        return -1;
     }
 
     cloud_main_dir.removefile(downloadFilePath);
@@ -547,7 +552,7 @@ int32_t cloud_fs_register(const char* cloudMonut)
 
     int ret;
     ret = vfs_register_fs(cloudMonut,&cloud_fs_ops,NULL);
-    printf("cloud_fs_register well!\n"); 
+    // printf("cloud_fs_register well!\n"); 
     return ret;
 }
 
@@ -567,4 +572,8 @@ void cloud_fs_dir_sync() {
 
     cloud_main_dir.dirsync("/");
     return;
+}
+
+void cloud_fs_sync_all() {
+    //TODO:
 }

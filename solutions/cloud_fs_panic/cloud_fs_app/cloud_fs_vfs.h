@@ -11,6 +11,7 @@
 int32_t cloud_fs_register(const char* cloudMonut);
 int32_t cloud_fs_unregister(const char *cloudMonut);
 void cloud_fs_dir_sync();
+void cloud_fs_sync_all();
 
 class Cloud_File
 {

@@ -17,6 +17,7 @@ extern Cloud_Dir cloud_main_dir;
 
 int cloud_fs_read(char * filepath)
 {
+    cloud_fs_register("/cloud");
     int fd = aos_open(filepath, O_RDWR);
 
     if (fd < 0) {
@@ -35,6 +36,7 @@ int cloud_fs_read(char * filepath)
 
 int cloud_fs_write(char * filepath, char * content)
 {
+    cloud_fs_register("/cloud");
     int fd = aos_open(filepath, O_RDWR);
 
     if (fd < 0) {
@@ -43,8 +45,8 @@ int cloud_fs_write(char * filepath, char * content)
     }
 
     std::string _content = content;
-    int ret = aos_write(fd, content, _content.size());
-    if (ret == _content.size()) {
+    int ret = aos_write(fd, content, _content.size() + 1);
+    if (ret == _content.size() + 1) {
         printf("write cloud file well!!!\r\n");
         aos_close(fd);
         return 0;
@@ -93,6 +95,11 @@ int cloud_fs_rmfile(char * filepath)
 int cloud_fs_lsfile(char * dirpath)
 {
     std::string dir_path = dirpath;
+
+    if (dir_path == "/cloud") {
+        cloud_main_dir.listDir(0);
+        return 0;
+    }
 
     int ret = cloud_main_dir.dirExists(dir_path);
     if (ret < 0) {
@@ -170,4 +177,12 @@ int cloud_fs_rmdir(char * dirpath)
 
     printf("remove dir well!!!\r\n");
     return 0;
+}
+
+void cloud_fs_syncdir() {
+    cloud_fs_dir_sync();
+}
+
+void cloud_fs_syncall() {
+    cloud_fs_sync_all();
 }

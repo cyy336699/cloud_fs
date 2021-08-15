@@ -436,7 +436,8 @@ int cloud_fs_oss_downloadFile2File(char * filepath, char * bucketName, char * lo
     auto outcome = client.GetObject(request);
 
     if (outcome.isSuccess()) {    
-        std::cout << "GetObjectToFile success" << outcome.result().Metadata().ContentLength() << std::endl;
+        // std::cout << "GetObjectToFile success" << outcome.result().Metadata().ContentLength() << std::endl;
+        return 0;
     }
     else {
         /*异常处理*/

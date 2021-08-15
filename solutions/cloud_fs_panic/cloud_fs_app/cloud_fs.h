@@ -9,3 +9,5 @@ int cloud_fs_move(char  * oldpath, char * newpath);
 int cloud_fs_cp(char  * oldpath, char * newpath);
 int cloud_fs_mkdir(char *dirpath);
 int cloud_fs_rmdir(char * dirpath);
+void cloud_fs_syncall();
+void cloud_fs_syncdir() ;

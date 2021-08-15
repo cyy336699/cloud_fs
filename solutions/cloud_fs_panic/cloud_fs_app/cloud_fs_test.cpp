@@ -15,6 +15,7 @@ static void cloud_fs_init(int argc, char **argv)
     printf("***********start test cloud_fs init by panic***********\r\n");
 
     cloud_fs_register("/cloud");
+    printf("cloud fs register well!!\r\n");
 
     aos_rmdir("/cloud");
     aos_mkdir("/cloud/test");
@@ -126,88 +127,7 @@ static void cloud_fs_file_test(int argc, char **argv)
     return;
 }
 
-static void cloud_fs_test(int argc, char **argv)
-{
-    printf("***********start test cloud_fs by panic***********\r\n");
-
-    // aos_remove("/data/cloud/demo.txt");
-    // aos_remove("/data/cloud/demo1.txt");
-    // aos_remove("/data/cloud/demo2.txt");
-    // int ret;
-
-    // ret = cloud_fs_lsfile();
-    // assert(ret == 0);
-    // printf("*******cloud_fs_lsfile test well\r\n");
-
-    // ret = cloud_fs_write("cloud.txt", "cloud_fs_demo here is OK!\r\n");
-    // assert(ret == 0);
-    // printf("*******cloud_fs_write test well\r\n");
-
-    // ret = cloud_fs_read("demo.txt");
-    // assert(ret == -1);
-
-    // ret = cloud_fs_read("cloud.txt");
-    // assert(ret == 0);
-    // printf("*******cloud_fs_read test well\r\n");
-
-    // ret = cloud_fs_write("demo.txt", "cloud fs demo well\r\n");
-    // assert(ret == 0);
-
-    // ret = cloud_fs_read("demo.txt");
-    // assert(ret == 0);
-
-    // ret = cloud_fs_read("demo1.txt");
-    // assert(ret == -1);
-
-    // ret = cloud_fs_touch("demo1.txt");
-    // assert(ret == 0);
-    // printf("*******cloud_fs_touch test well\r\n");
-
-    // ret = cloud_fs_lsfile();
-    // assert(ret == 0);
-
-    // ret = cloud_fs_read("demo2.txt");
-    // assert(ret == -1);
-
-    // ret = cloud_fs_move("demo.txt", "demo2.txt");
-    // assert(ret == 0);
-
-    // ret = cloud_fs_read("demo2.txt");
-    // assert(ret == 0);
-
-    // ret = cloud_fs_read("demo.txt");
-    // assert(ret == -1);
-    // printf("*******cloud_fs_move test well\r\n");
-
-    // ret = cloud_fs_cp("demo2.txt", "demo.txt");
-    // assert(ret == 0);
-
-    // ret = cloud_fs_read("demo2.txt");
-    // assert(ret == 0);
-
-    // ret = cloud_fs_read("demo.txt");
-    // assert(ret == 0);
-    // printf("*******cloud_fs_cp test well\r\n");
-
-    // ret = cloud_fs_rmfile("demo.txt");
-    // assert(ret == 0);
-
-    // ret = cloud_fs_rmfile("demo1.txt");
-    // assert(ret == 0);
-
-    // ret = cloud_fs_rmfile("demo2.txt");
-    // assert(ret == 0);
-    // printf("*******cloud_fs_rmfile test well\r\n");
-
-    // ret = cloud_fs_lsfile();
-    // assert(ret == 0);
-
-    printf("***********test cloud_fs by panic well!!!***********\r\n");
-    return;
-}
-
 #if AOS_COMP_CLI
-ALIOS_CLI_CMD_REGISTER(cloud_fs_test, cloud_fs_test, cloud fs test demo)
 ALIOS_CLI_CMD_REGISTER(cloud_fs_init, cloud_fs_init, cloud fs init)
 ALIOS_CLI_CMD_REGISTER(cloud_fs_dir_test, cloud_fs_dir_test, cloud fs dir test)
 ALIOS_CLI_CMD_REGISTER(cloud_fs_file_test, cloud_fs_file_test, cloud fs file test)
