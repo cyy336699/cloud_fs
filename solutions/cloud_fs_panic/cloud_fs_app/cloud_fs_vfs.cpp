@@ -36,18 +36,19 @@ struct oss_and_local {
     char* ossfilepath;
 };
 
+/*
 //用于解决hashmap以char* 作为key值时，原生比较函数比较地址的问题。
 //现在使用重载比较函数，比较字符串的值，而不是地址。
 struct ptrCmp
 {
     bool operator()( const char * s1, const char * s2 ) const
     {
-        return strcmp( s1, s2 ) < 0;
+        return strcmp( s1, s2 ) == 0;
     }
 };
-
-static hash_map <char*, oss_and_local*, ptrCmp> fp_path_map; //用于存储fp为键值，路径结构体指针为value的hashmap
-static hash_map <char*, Timer*, ptrCmp> fp_timer_map; //用于存储fp为键值，Timer类指针为value的hashmap。用于标示哪些fp对应的文件正在上传（已绑定timer）
+*/
+static hash_map <std::string, oss_and_local*> fp_path_map; //用于存储fp为键值，路径结构体指针为value的hashmap
+static hash_map <std::string, Timer*> fp_timer_map; //用于存储fp为键值，Timer类指针为value的hashmap。用于标示哪些fp对应的文件正在上传（已绑定timer）
 
 int64_t get_file_size(const std::string& file)
 {
@@ -64,8 +65,8 @@ void oss_file_upload(void* arg) {
     printf("upload arg : %d\r\n", arg);
     printf("upload:  fp_path_map size= %d\r\n", fp_path_map.size());
     printf("upload:  fp_timer_map size= %d\r\n", fp_timer_map.size());
-    hash_map <char*, oss_and_local*>::iterator it = fp_path_map.find((char*) arg);
-    hash_map<char*, Timer*>::iterator iter = fp_timer_map.find((char*) arg);
+    hash_map <std::string, oss_and_local*>::iterator it = fp_path_map.find((char*) arg);
+    hash_map<std::string, Timer*>::iterator iter = fp_timer_map.find((char*) arg);
     if (it == fp_path_map.end()) { //没找到fp对应的路径信息
         printf("something goes wrong with fp_path_map, fp doesn't exist!\n");
         return;
@@ -121,7 +122,7 @@ void main_timer_call_func(void* timer, void* arg) {
 void flush_delay_time(void* arg) {
     vfs_file_t* fp = (vfs_file_t*) arg;
     //通过fp_timer_map找到fp对应的timer
-    hash_map<char*, Timer*>::iterator iter = fp_timer_map.find((char*) arg);
+    hash_map<std::string, Timer*>::iterator iter = fp_timer_map.find((char*) arg);
     if (iter == fp_timer_map.end()) {
         printf("fp-timer map doesn't exist!\n");
         return;
@@ -154,7 +155,7 @@ void ass_timer_call_func(void* timer, void* arg) {
 
 static int32_t cloud_sync(vfs_file_t *fp) {
     //通过fp路径，在fp_timer_map中查找是否有对应的Timer类，若有则说明是再次访问，需要更新时间；若没有则新建一个Timer类
-    hash_map<char*, Timer*>::iterator it = fp_timer_map.find((char*)fp);
+    hash_map<std::string, Timer*>::iterator it = fp_timer_map.find((char*)fp);
     if (it == fp_timer_map.end()) {
         //创建一个定时器类
         Timer timer(fp);
@@ -261,7 +262,7 @@ static int32_t cloud_vfs_write(vfs_file_t *fp, const char *buf, uint32_t len)
 
     int32_t ret =lfs_vfs_Write(&fp_lfs, buf, len);
 
-    hash_map<char*, Timer*>::iterator it = fp_timer_map.find((char*)fp);
+    hash_map<std::string, Timer*>::iterator it = fp_timer_map.find((char*)fp);
     if(it == fp_timer_map.end()) {
         ;
     } else {
@@ -385,7 +386,7 @@ static int32_t cloud_vfs_remove(vfs_file_t *fp, const char *filepath)
         return 0;
     }
 
-    hash_map<char*, Timer*>::iterator it = fp_timer_map.find((char*)fp);
+    hash_map<std::string, Timer*>::iterator it = fp_timer_map.find((char*)fp);
     if (it == fp_timer_map.end()) {
         ret = cloud_fs_oss_deleteFile(const_cast<char*>(downloadFilePath.c_str()), NULL);
         if (ret != 0) {
