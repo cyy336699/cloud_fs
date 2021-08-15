@@ -321,6 +321,7 @@ public:
             for (i = 0; i < subfiles.size(); i++) {
                 if (subfiles[i].getname() == filename) {
                     flag = i;
+                    printf("mkfile flag = %d\r\n", flag);
                     break;
                 }
             }

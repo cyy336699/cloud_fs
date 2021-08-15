@@ -10,9 +10,9 @@
 
 extern Cloud_Dir cloud_main_dir;
 
-static void cloud_fs_dir_init(int argc, char **argv)
+static void cloud_fs_init(int argc, char **argv)
 {
-    printf("***********start test cloud_fs_dir_init by panic***********\r\n");
+    printf("***********start test cloud_fs init by panic***********\r\n");
 
     cloud_fs_register("/cloud");
 
@@ -22,13 +22,13 @@ static void cloud_fs_dir_init(int argc, char **argv)
     cloud_fs_dir_sync();
     cloud_main_dir.listDir(0);
 
-    printf("***********test cloud_fs_dir_init by panic well!!!***********\r\n");
+    printf("***********test cloud_fs init by panic well!!!***********\r\n");
     return;    
 }
 
 static void cloud_fs_dir_test(int argc, char **argv)
 {
-    printf("***********start test cloud_fs_dirby panic***********\r\n");
+    printf("***********start test cloud_fs dir by panic***********\r\n");
 
     int ret = 0;
 
@@ -70,23 +70,65 @@ static void cloud_fs_dir_test(int argc, char **argv)
     printf("rmdir well!!!\r\n");
     cloud_main_dir.listDir(0);
 
-    printf("***********test cloud_fs_dir by panic well!!!***********\r\n");
+    printf("***********test cloud_fs dir by panic well!!!***********\r\n");
     return;    
+}
+
+static void cloud_fs_file_test(int argc, char **argv)
+{
+    printf("***********start test cloud_fs file by panic***********\r\n");
+
+    char buf[64] = {0};
+    int fd = 0, fd1 = 0, ret = 0;
+
+    aos_remove("/data/a.txt");
+
+    // should fd > 0
+    fd = aos_open("/cloud/a.txt", O_CREAT | O_RDWR | O_APPEND);
+    printf("aos_open well!!!\r\n");
+
+    cloud_main_dir.listDir(0);
+
+    // should write well
+    ret = aos_write(fd, "Welcome to Our Cloud File System\n", 33);
+    assert(ret == 33);
+    printf("write file well!!!\r\n");
+
+
+    ret = aos_lseek(fd, 0, 0);
+    assert(ret == 0);
+    printf("lseek file well!!!\r\n");
+
+    // should read well
+    ret = aos_read(fd, buf, 33);
+    assert(ret == 33);
+    buf[33] = '\0';
+    printf("aos_read1: %s \r\n", buf);
+
+    // should lseek well
+    ret = aos_lseek(fd, 11, 0);
+    assert(ret == 11);
+    printf("lseek file well!!!\r\n");
+
+    // should read well
+    ret = aos_read(fd, buf, 22);
+    assert(ret == 22);
+    buf[22] = '\0';
+    printf("aos_read2: %s \r\n", buf);
+
+    // should close well
+    ret = aos_close(fd);
+    printf("aos_close ret1: %d\r\n", ret);
+
+    cloud_main_dir.listDir(0);
+
+    printf("***********test cloud_fs file by panic well!!!***********\r\n");
+    return;
 }
 
 static void cloud_fs_test(int argc, char **argv)
 {
     printf("***********start test cloud_fs by panic***********\r\n");
-    
-    /*char buf[8] = {0};
-    aos_open("/cloud/a.txt", 0);
-    aos_close(1);
-    aos_read(1, buf, 8);
-    aos_write(1, "1234", 4);
-    aos_sync(1);
-    aos_rename("/cloud/a.txt", "/cloud/b.txt");
-    aos_lseek(1, 0, 0);
-    aos_remove("/cloud/a.txt");*/
 
     // aos_remove("/data/cloud/demo.txt");
     // aos_remove("/data/cloud/demo1.txt");
@@ -166,6 +208,7 @@ static void cloud_fs_test(int argc, char **argv)
 
 #if AOS_COMP_CLI
 ALIOS_CLI_CMD_REGISTER(cloud_fs_test, cloud_fs_test, cloud fs test demo)
-ALIOS_CLI_CMD_REGISTER(cloud_fs_dir_init, cloud_fs_dir_init, cloud fs dir init)
+ALIOS_CLI_CMD_REGISTER(cloud_fs_init, cloud_fs_init, cloud fs init)
 ALIOS_CLI_CMD_REGISTER(cloud_fs_dir_test, cloud_fs_dir_test, cloud fs dir test)
+ALIOS_CLI_CMD_REGISTER(cloud_fs_file_test, cloud_fs_file_test, cloud fs file test)
 #endif

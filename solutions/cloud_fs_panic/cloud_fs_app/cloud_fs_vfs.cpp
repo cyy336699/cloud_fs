@@ -51,6 +51,8 @@ int64_t get_file_size(const std::string& file)
 //该函数用于回调函数main_timer_call_func调用来将文件上传至OSS
 //参数arg由于timer的要求，需要传入void*，函数内部再转换成vfs_file_t*
 void oss_file_upload(void* arg) {
+    printf("upload:  fp_path_map size= %d\r\n", fp_path_map.size());
+    printf("upload:  fp_timer_map size= %d\r\n", fp_timer_map.size());
     vfs_file_t* temp_fp = (vfs_file_t*) arg;
     hash_map <char*, oss_and_local*>::iterator it = fp_path_map.find((char*) temp_fp);
     hash_map<char*, Timer*>::iterator iter = fp_timer_map.find((char*) temp_fp);
@@ -66,8 +68,7 @@ void oss_file_upload(void* arg) {
             //删除已上传的fp对应的Timer类（计时器）
             fp_timer_map.erase(iter);
         }
-        oss_and_local* temp = (oss_and_local*)aos_malloc(sizeof(oss_and_local));
-        temp = it->second; //用temp存储fp对应的两个路径信息
+        oss_and_local* temp = it->second; //用temp存储fp对应的两个路径信息
 
         //调用getFileSize函数获取待上传文件的大小
         int64_t filesize = get_file_size(temp->localfilepath);
@@ -90,7 +91,7 @@ void oss_file_upload(void* arg) {
         //删除已上传的fp对应的路径结构体
         fp_path_map.erase(it);
         //释放临时申请的temp（路径结构体）
-        aos_free(temp);
+        // aos_free(temp);
     }
 }
 
@@ -115,8 +116,7 @@ void flush_delay_time(void* arg) {
         printf("fp-timer map doesn't exist!\n");
         return;
     } else {
-        Timer* timer = (Timer*)aos_malloc(sizeof(Timer));
-        timer = iter->second;
+        Timer* timer = iter->second;
         int delay_time = (*timer).get_delay_time();
         //将最近文件访问次数减少1次，避免多次不频繁的访问导致延迟时间过大
         (*timer).set_visit_times((*timer).get_visit_times()-1);
@@ -128,7 +128,7 @@ void flush_delay_time(void* arg) {
             (*timer).set_delay_time(delay_time);
             (*timer).reset_main_timer(delay_time*1000);
         }
-        aos_free(timer);
+        // aos_free(timer);
     }
 }
 
@@ -142,13 +142,36 @@ void ass_timer_call_func(void* timer, void* arg) {
     return;
 }
 
+static int32_t cloud_sync(vfs_file_t *fp) {
+    //通过fp路径，在fp_timer_map中查找是否有对应的Timer类，若有则说明是再次访问，需要更新时间；若没有则新建一个Timer类
+    hash_map<char*, Timer*>::iterator it = fp_timer_map.find((char*)fp);
+    if (it == fp_timer_map.end()) {
+        //创建一个定时器类
+        Timer timer(fp);
+        //初始化主定时器，回调函数是main_timer_call_func，倒数第二个参数：0代表单次执行，最后一个参数：1代表自动开始执行
+        timer.init_main_timer(main_timer_call_func, (void*)timer.get_file(), 20000, 0, 1);
+        //初始化辅定时器，回调函数是ass_timer_call_func，倒数第二个参数：1代表周期执行（每隔15s执行一次），最后一个参数：1代表自动开始执行
+        timer.init_ass_timer(ass_timer_call_func, (void*)timer.get_file(), 15000, 1, 1);
+        //将新建的Timer类加入hashmap中，键值为fp
+        fp_timer_map.insert(make_pair((char*) fp, &timer));
+    } else {
+        Timer* timer = it->second;
+        //由于刷新操作，因此对于该文件的访问次数加1
+        (*timer).set_visit_times((*timer).get_visit_times()+1);
+        //根据公式重新计算延迟时间
+        int new_delay_time = 20 * pow(2, (*timer).get_visit_times());
+        (*timer).set_delay_time(new_delay_time);
+        //刷新主定时器的延迟时间
+        (*timer).reset_main_timer(new_delay_time*1000);
+        //也要让辅定时器重新从0开始计时
+        (*timer).reset_ass_timer(15000);
+    }
+}
 
 static int32_t cloud_vfs_open(vfs_file_t *fp, const char *filepath, int32_t flags) 
 {
-    return 0;
-
-    vfs_file_t fp_lfs =*fp;
-    fp_lfs.node->i_name=(char*)LF_PATH;
+    // printf("/cloud open!!!\r\n");
+    fp->node->i_name=(char*)LF_PATH;
 
     std::string path = filepath;
     std::string tmpPath = path.substr(0, 6);
@@ -163,42 +186,54 @@ static int32_t cloud_vfs_open(vfs_file_t *fp, const char *filepath, int32_t flag
     temp->localfilepath = const_cast<char *>(lfPath.c_str());
     temp->ossfilepath = const_cast<char *>(downloadFilePath.c_str());
     fp_path_map.insert(make_pair((char*) fp,  temp));
-    //fwt新增代码end
 
     int fd = -1, buff[1024] = {0};
     char content[1030];
 
+    // printf("flags=%d, O_CREAT=%d, flags & (~O_CREAT)=%d\r\n", flags, O_CREAT, flags & (~O_CREAT));
+
     if(flags & O_CREAT){
         int32_t new_flag = flags & (~O_CREAT);
-        fd= lfs_vfs_Open(&fp_lfs, lfPath.c_str(),new_flag);
+        fd= lfs_vfs_Open(fp, lfPath.c_str(),new_flag);
+        // printf("lfs open1 : %d\r\n", fd);
     }
 
-    if (fd <= 0) {
+    if (fd < 0) {
         int ret = cloud_main_dir.isFileExists(downloadFilePath);
         if (ret != 1) {
             printf("cloud has no such file!\r\n");
 
-            fd= lfs_vfs_Open(&fp_lfs, lfPath.c_str(),flags);
+            fd= lfs_vfs_Open(fp, lfPath.c_str(),flags);
+            // printf("lfs open2 : %d\r\n", fd);
+            if (fd >= 0) {
+                cloud_main_dir.mkfile(downloadFilePath);
+            }
+            fp->node->i_name=(char*)CLOUD_PATH;
             return fd;
         }
 
         ret = cloud_fs_oss_downloadFile2File(const_cast<char*>(downloadFilePath.c_str()), NULL, const_cast<char*>(lfPath.c_str()));
         if (ret == 0) {
-            fd= lfs_vfs_Open(&fp_lfs, lfPath.c_str(),flags);
+            fd= lfs_vfs_Open(fp, lfPath.c_str(),flags);
+            fp->node->i_name=(char*)CLOUD_PATH;
             return fd;
         }
         else {
             printf("download error!\r\n");
+            fp->node->i_name=(char*)CLOUD_PATH;
             return -2;
         }
     } 
     else {
+        cloud_main_dir.mkfile(downloadFilePath);
+        fp->node->i_name=(char*)CLOUD_PATH;
         return fd;
     }
 }
 
 static int32_t cloud_vfs_read(vfs_file_t *fp, char *buf, uint32_t len)
 {   
+    // printf("cloud_vfs_read\r\n");
     vfs_file_t fp_lfs =*fp;
     fp_lfs.node->i_name=(char*)LF_PATH;
 
@@ -237,39 +272,14 @@ static int32_t cloud_vfs_sync(vfs_file_t *fp)
     //先在本地littlefs系统里进行同步
     int32_t ret =lfs_vfs_Sync(&fp_lfs);
 
-    printf("local sync is done!\n");
-
-    //通过fp路径，在fp_timer_map中查找是否有对应的Timer类，若有则说明是再次访问，需要更新时间；若没有则新建一个Timer类
-    hash_map<char*, Timer*>::iterator it = fp_timer_map.find((char*)fp);
-    if (it == fp_timer_map.end()) {
-        //创建一个定时器类
-        Timer timer(fp);
-        //初始化主定时器，回调函数是main_timer_call_func，倒数第二个参数：0代表单次执行，最后一个参数：1代表自动开始执行
-        timer.init_main_timer(main_timer_call_func, (void*)timer.get_file(), 20000, 0, 1);
-        //初始化辅定时器，回调函数是ass_timer_call_func，倒数第二个参数：1代表周期执行（每隔15s执行一次），最后一个参数：1代表自动开始执行
-        timer.init_ass_timer(ass_timer_call_func, (void*)timer.get_file(), 15000, 1, 1);
-        //将新建的Timer类加入hashmap中，键值为fp
-        fp_timer_map.insert(make_pair((char*) fp, &timer));
-    } else {
-        Timer* timer = (Timer*)aos_malloc(sizeof(Timer));
-        timer = it->second;
-        //由于刷新操作，因此对于该文件的访问次数加1
-        (*timer).set_visit_times((*timer).get_visit_times()+1);
-        //根据公式重新计算延迟时间
-        int new_delay_time = 20 * pow(2, (*timer).get_visit_times());
-        (*timer).set_delay_time(new_delay_time);
-        //刷新主定时器的延迟时间
-        (*timer).reset_main_timer(new_delay_time*1000);
-        //也要让辅定时器重新从0开始计时
-        (*timer).reset_ass_timer(15000);
-        aos_free(timer);
-    }
+    // printf("local sync is done!\n");
     return ret;
 }
 
 static int32_t cloud_vfs_close(vfs_file_t *fp)
 {
     cloud_vfs_sync(fp);
+    cloud_sync(fp);
 
     vfs_file_t fp_lfs =*fp;
     fp_lfs.node->i_name=(char*)LF_PATH;
@@ -301,39 +311,38 @@ static int32_t cloud_vfs_rename(vfs_file_t *fp,const char *oldpath, const char *
 
     char content[1030];
 
-    int ret = cloud_main_dir.isFileExists(cloudNewFilePath);
-    if (ret != 1) {
-        printf("cloud doesn't  have the same file\r\n");
+    int tmp = cloud_main_dir.isFileExists(cloudNewFilePath);
+    if (tmp != 1) {
+        printf("cloud doesn't  have the same file!!!\r\n");
         return -1;
     }
 
-    ret = cloud_fs_oss_downloadFile2File(const_cast<char*>(cloudOldFilePath.c_str()), NULL, const_cast<char*>(oldLfPath.c_str()));
-    if (ret == 0) {
-        ret = cloud_fs_oss_deleteFile(const_cast<char*>(cloudOldFilePath.c_str()), NULL);
-        if (ret != 0) {
-            printf("delete cloud file wrong!\r\n");
-            return -7;
-        }
-
-        int32_t ru =lfs_vfs_Rename(&fp_lfs, oldLfPath.c_str(), newLfPath.c_str());
-
-        //如果要关闭延时上传机制，就把sync函数注释掉，并恢复uploadFile函数即可
-        cloud_vfs_sync(fp);
-        /*ret = cloud_fs_oss_uploadFile(const_cast<char*>(newLfPath.c_str()), NULL, const_cast<char*>(cloudNewFilePath.c_str()));
-        if (ret != 0) {
-            printf("upload file failed!\r\n");
-            return -6;
-        }*/
-    }
+    tmp = aos_open(oldpath, O_RDWR);
+    if (tmp > 0) {
+        aos_close(tmp);
+    } 
     else {
-        printf("download file error!\n");
-        return -1;
+        tmp = cloud_fs_oss_downloadFile2File(const_cast<char*>(cloudOldFilePath.c_str()), NULL, const_cast<char*>(oldLfPath.c_str()));
+        if (tmp != 0) {
+            printf("download file failed!!!\r\n");
+            return -1;
+        }
     }
 
     cloud_main_dir.removefile(cloudOldFilePath);
     cloud_main_dir.mkfile(cloudNewFilePath);
+
+    tmp = cloud_fs_oss_deleteFile(const_cast<char*>(cloudOldFilePath.c_str()), NULL);
+    if (tmp != 0) {
+        printf("delete cloud file wrong!\r\n");
+        return -7;
+    }
+
+    int32_t ret =lfs_vfs_Rename(&fp_lfs, oldLfPath.c_str(), newLfPath.c_str());
+
+    cloud_vfs_sync(fp);
     
-    return 0;
+    return ret;
 }
 
 static  uint32_t  cloud_vfs_lseek(vfs_file_t *fp, int64_t off, int32_t whence)
@@ -363,10 +372,15 @@ static int32_t cloud_vfs_remove(vfs_file_t *fp, const char *filepath)
         return 0;
     }
 
-    ret = cloud_fs_oss_deleteFile(const_cast<char*>(downloadFilePath.c_str()), NULL);
-    if (ret != 0) {
-        printf("delete cloud file wrong!\r\n");
-        return -1;
+    hash_map<char*, Timer*>::iterator it = fp_timer_map.find((char*)fp);
+    if (it == fp_timer_map.end()) {
+        ret = cloud_fs_oss_deleteFile(const_cast<char*>(downloadFilePath.c_str()), NULL);
+        if (ret != 0) {
+            printf("delete cloud file wrong!\r\n");
+            return -1;
+        }
+    } else {
+        fp_timer_map.erase(it);
     }
 
     cloud_main_dir.removefile(downloadFilePath);
