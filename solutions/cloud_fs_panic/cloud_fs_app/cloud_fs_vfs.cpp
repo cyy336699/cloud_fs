@@ -36,8 +36,18 @@ struct oss_and_local {
     char* ossfilepath;
 };
 
-static hash_map <char*, oss_and_local*> fp_path_map; //用于存储fp为键值，路径结构体指针为value的hashmap
-static hash_map <char*, Timer*> fp_timer_map; //用于存储fp为键值，Timer类指针为value的hashmap。用于标示哪些fp对应的文件正在上传（已绑定timer）
+//用于解决hashmap以char* 作为key值时，原生比较函数比较地址的问题。
+//现在使用重载比较函数，比较字符串的值，而不是地址。
+struct ptrCmp
+{
+    bool operator()( const char * s1, const char * s2 ) const
+    {
+        return strcmp( s1, s2 ) < 0;
+    }
+};
+
+static hash_map <char*, oss_and_local*, ptrCmp> fp_path_map; //用于存储fp为键值，路径结构体指针为value的hashmap
+static hash_map <char*, Timer*, ptrCmp> fp_timer_map; //用于存储fp为键值，Timer类指针为value的hashmap。用于标示哪些fp对应的文件正在上传（已绑定timer）
 
 int64_t get_file_size(const std::string& file)
 {
