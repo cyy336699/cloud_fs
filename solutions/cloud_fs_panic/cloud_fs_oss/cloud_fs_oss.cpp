@@ -107,6 +107,13 @@ int cloud_fs_oss_deleteBucket(char* bucketName)
     return 0;
 }
 
+//用于进度条显示的回调函数
+void ProgressCallback(size_t increment, int64_t transfered, int64_t total, void* userData)
+{
+    std::cout << "ProgressCallback[" << userData << "] => " <<
+    increment <<" ," << transfered << "," << total << std::endl;
+}
+
 /**
  * upload specified file
  * @param localfilepath: absolute path,e.g.: '/a/b/c/d.txt'
@@ -146,6 +153,10 @@ int cloud_fs_oss_uploadFile(char * localfilepath, char * bucketName, char * file
 
     std::shared_ptr<std::iostream> content = std::make_shared<std::fstream>(localfilepath, std::ios::in | std::ios::binary);
     PutObjectRequest request(BucketName, ObjectName, content);
+
+    //设置进度条显示功能
+    TransferProgress progressCallback = {ProgressCallback, nullptr};
+    request.setTransferProgress(progressCallback);
 
     auto outcome = client.PutObject(request);
 
@@ -197,6 +208,9 @@ int cloud_fs_oss_uploadContent(char * bucketName, char * filename)
     *content << "";
 
     PutObjectRequest request(BucketName, ObjectName, content);
+
+    TransferProgress progressCallback = {ProgressCallback, nullptr};
+    request.setTransferProgress(progressCallback);
 
     auto outcome = client.PutObject(request);
 
