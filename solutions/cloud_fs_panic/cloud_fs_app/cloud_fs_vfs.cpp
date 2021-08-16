@@ -48,6 +48,7 @@ struct ptrCmp
 };
 */
 static std::unordered_map <int *, oss_and_local*> fp_path_map; //用于存储fp为键值，路径结构体指针为value的hashmap
+static std::unordered_map <int *, oss_and_local*> fp_path_map_tmp;
 static std::unordered_map <int *, Timer*> fp_timer_map; //用于存储fp为键值，Timer类指针为value的hashmap。用于标示哪些fp对应的文件正在上传（已绑定timer）
 
 int64_t get_file_size(const std::string& file)
@@ -63,7 +64,6 @@ int64_t get_file_size(const std::string& file)
 //参数arg由于timer的要求，需要传入void*，函数内部再转换成vfs_file_t*
 void oss_file_upload(void* arg) {
     int * tmp = (int *)arg;
-
     std::unordered_map <int *, oss_and_local*>::iterator it = fp_path_map.find(tmp);
     std::unordered_map<int *, Timer*>::iterator iter = fp_timer_map.find(tmp);
     if (it == fp_path_map.end()) { //没找到fp对应的路径信息
@@ -160,6 +160,15 @@ void ass_timer_call_func(void* timer, void* arg) {
 }
 
 static int32_t cloud_sync(vfs_file_t *fp) {
+    std::unordered_map<int *, oss_and_local *>::iterator iter = fp_path_map.find((int *)fp);
+    if (iter == fp_path_map.end()) {
+        iter = fp_path_map_tmp.find((int * )fp);
+        if (iter == fp_path_map_tmp.end()) {
+            return 0;
+        }
+        fp_path_map_tmp.erase(iter);
+        return 0;
+    }
     //通过fp路径，在fp_timer_map中查找是否有对应的Timer类，若有则说明是再次访问，需要更新时间；若没有则新建一个Timer类
     std::unordered_map<int *, Timer*>::iterator it = fp_timer_map.find((int *) fp);
     if (it == fp_timer_map.end()) {
@@ -206,8 +215,7 @@ static int32_t cloud_vfs_open(vfs_file_t *fp, const char *filepath, int32_t flag
     strncpy(osspath, downloadFilePath.c_str(), 1024);
     temp->localfilepath = localpath;
     temp->ossfilepath = osspath;
-    fp_path_map.insert(make_pair((int *) fp,  temp));
-
+    fp_path_map_tmp.insert(make_pair((int *) fp,  temp));
 
     int fd = -1, buff[1024] = {0};
     char content[1030];
@@ -278,6 +286,19 @@ static int32_t cloud_vfs_write(vfs_file_t *fp, const char *buf, uint32_t len)
     fp_lfs.node->i_name=(char*)LF_PATH;
 
     int32_t ret = lfs_vfs_Write(&fp_lfs, buf, len);
+
+    std::unordered_map<int *, oss_and_local *>::iterator iter = fp_path_map.find((int *)fp);
+    if (iter == fp_path_map.end()) {
+        iter = fp_path_map_tmp.find((int * )fp);
+        if (iter == fp_path_map_tmp.end()) {
+            printf("write  find path wrong!!\r\n");
+            return ret;
+        }
+        oss_and_local *tmp = iter->second;
+        fp_path_map.insert(make_pair((int *)fp, tmp));
+        fp_path_map_tmp.erase(iter);
+        return ret;
+    }
 
     std::unordered_map<int *, Timer*>::iterator it = fp_timer_map.find((int *)fp);
     if(it == fp_timer_map.end()) {
@@ -578,7 +599,11 @@ void cloud_fs_sync_all() {
     for (unordered_map<int*, Timer*>::iterator it = fp_timer_map.begin(); it != fp_timer_map.end(); it++) {
         Timer* timer = it->second;
         //将主定时器的延时重置为0，直接上传
-        (*timer).reset_main_timer(0);
+        (*timer).reset_main_timer(5);
+        aos_timer_t tmp = timer->get_ass_timer();
+        aos_timer_stop(&tmp);
     }
+    aos_msleep(1000);
+    printf("All files already uploaded well !!!\r\n");
     return;
 }

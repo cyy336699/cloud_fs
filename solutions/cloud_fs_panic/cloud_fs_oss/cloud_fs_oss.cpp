@@ -447,6 +447,10 @@ int cloud_fs_oss_downloadFile2File(char * filepath, char * bucketName, char * lo
     GetObjectRequest request(BucketName, ObjectName);
     request.setResponseStreamFactory([=]() {return std::make_shared<std::fstream>(localfilepath, std::ios_base::out | std::ios_base::in | std::ios_base::trunc| std::ios_base::binary); });
 
+    //设置进度条显示功能
+    TransferProgress progressCallback = {ProgressCallback, nullptr};
+    request.setTransferProgress(progressCallback);
+
     auto outcome = client.GetObject(request);
 
     if (outcome.isSuccess()) {    
