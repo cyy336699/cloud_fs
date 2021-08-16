@@ -264,25 +264,25 @@ int cloud_fs_oss_uploadFile_breakpoint_resume(char * localfilepath, char * bucke
 
     InitializeSdk();
 
-    // ClientConfiguration conf;
-    // OssClient client(Endpoint, AccessKeyId, AccessKeySecret, conf);
+    ClientConfiguration conf;
+    OssClient client(Endpoint, AccessKeyId, AccessKeySecret, conf);
 
-    // UploadObjectRequest request(BucketName, ObjectName, localfile_path, CheckpointFilePath);
-    // //将默认的分块大小8M调整为128K，以符合128K~128M使用断点续传的要求
-    // request.setPartSize(128*1024);
+    UploadObjectRequest request(BucketName, ObjectName, localfile_path, CheckpointFilePath);
+    //将默认的分块大小8M调整为128K，以符合128K~128M使用断点续传的要求
+    request.setPartSize(128*1024);
 
-    // //断点续传函数
-    // auto outcome = client.ResumableUploadObject(request);
+    //断点续传函数
+    auto outcome = client.ResumableUploadObject(request);
 
-    // if (!outcome.isSuccess()) {
-    //     /* 异常处理 */
-    //     std::cout << "ResumableUploadObject fail" <<
-    //     ",code:" << outcome.error().Code() <<
-    //     ",message:" << outcome.error().Message() <<
-    //     ",requestId:" << outcome.error().RequestId() << std::endl;
-    //     ShutdownSdk();
-    //     return -1;
-    // }
+    if (!outcome.isSuccess()) {
+        /* 异常处理 */
+        std::cout << "ResumableUploadObject fail" <<
+        ",code:" << outcome.error().Code() <<
+        ",message:" << outcome.error().Message() <<
+        ",requestId:" << outcome.error().RequestId() << std::endl;
+        ShutdownSdk();
+        return -1;
+    }
 
     /* 释放网络等资源 */
     ShutdownSdk();
