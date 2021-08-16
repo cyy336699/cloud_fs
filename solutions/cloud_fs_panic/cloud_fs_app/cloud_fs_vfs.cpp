@@ -13,7 +13,6 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
-#include <unordered_map>
 #include <math.h>
 #include <fstream>
 
@@ -575,5 +574,11 @@ void cloud_fs_dir_sync() {
 }
 
 void cloud_fs_sync_all() {
-    //TODO:
+    //遍历fp_timer_map，将每一个正在上传的文件的延迟时间全部重置为0，直接上传
+    for (unordered_map<int*, Timer*>::iterator it = fp_timer_map.begin(); it != fp_timer_map.end(); it++) {
+        Timer* timer = it->second;
+        //将主定时器的延时重置为0，直接上传
+        (*timer).reset_main_timer(0);
+    }
+    return;
 }
