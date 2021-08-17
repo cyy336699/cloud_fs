@@ -393,6 +393,7 @@ static int32_t cloud_vfs_rename(vfs_file_t *fp,const char *oldpath, const char *
     int32_t ret =lfs_vfs_Rename(&fp_lfs, oldLfPath.c_str(), newLfPath.c_str());
 
     cloud_vfs_sync(fp);
+    cloud_sync(fp);
     
     return ret;
 }
@@ -419,20 +420,22 @@ static int32_t cloud_vfs_remove(vfs_file_t *fp, const char *filepath)
     std::string downloadFilePath = path.substr(6);
     std::string lfPath = LF_PATH + downloadFilePath;
 
-    int ret = cloud_main_dir.isFileExists(downloadFilePath);
-    if (ret != 1) {
+    int re = cloud_main_dir.isFileExists(downloadFilePath);
+    if (re != 1) {
         return 0;
     }
 
-    ret = cloud_fs_oss_deleteFile(const_cast<char*>(downloadFilePath.c_str()), NULL);
-    if (ret != 0) {
+    re = cloud_fs_oss_deleteFile(const_cast<char*>(downloadFilePath.c_str()), NULL);
+    if (re != 0) {
         printf("delete cloud file wrong!\r\n");
         return -1;
     }
 
     cloud_main_dir.removefile(downloadFilePath);
 
-    return 0;
+    uint32_t ret = lfs_vfs_Remove(&fp_lfs, lfPath.c_str());
+
+    return ret;
 }
 
 static vfs_dir_t *cloud_vfs_opendir(vfs_file_t *fp, const char *path)
@@ -454,7 +457,8 @@ static vfs_dir_t *cloud_vfs_opendir(vfs_file_t *fp, const char *path)
     return (vfs_dir_t *)cloud_vfs_dir;
 }
 
-static vfs_dirent_t *cloud_vfs_readdir(vfs_file_t *fp, vfs_dir_t *dir){
+static vfs_dirent_t *cloud_vfs_readdir(vfs_file_t *fp, vfs_dir_t *dir)
+{
     Cloud_Vfs_Dir * cloud_fs_dir = (Cloud_Vfs_Dir*)dir;
     if (!cloud_fs_dir) {
         return NULL;
@@ -465,7 +469,7 @@ static vfs_dirent_t *cloud_vfs_readdir(vfs_file_t *fp, vfs_dir_t *dir){
     cloud_fs_dir->vdirent.d_ino = 0;
     cloud_fs_dir->vdirent.d_type = 0;
 
-     std::string name = cloud_fs_dir->cloud_dir.getsubname();
+    std::string name = cloud_fs_dir->cloud_dir.getsubname();
 
     strncpy(cloud_fs_dir->vdirent.d_name, name.c_str(), 128);
 
@@ -474,7 +478,8 @@ static vfs_dirent_t *cloud_vfs_readdir(vfs_file_t *fp, vfs_dir_t *dir){
     return &cloud_fs_dir->vdirent;
 }
 
-static int32_t cloud_vfs_closedir(vfs_file_t *fp, vfs_dir_t *dir){
+static int32_t cloud_vfs_closedir(vfs_file_t *fp, vfs_dir_t *dir)
+{
     Cloud_Vfs_Dir * cloud_fs_dir = (Cloud_Vfs_Dir*)dir;
     if (!cloud_fs_dir) {
         return NULL;
@@ -517,7 +522,8 @@ static void cloud_vfs_seekdir(vfs_file_t *fp, vfs_dir_t *dir, int32_t loc)
     return ;
 }
 
-static int32_t cloud_vfs_mkdir(vfs_file_t *fp, const char *path) {
+static int32_t cloud_vfs_mkdir(vfs_file_t *fp, const char *path) 
+{
     std::string name = path;
     name = name.substr(6);
     cloud_main_dir.mkdir(name);
@@ -532,7 +538,8 @@ static int32_t cloud_vfs_mkdir(vfs_file_t *fp, const char *path) {
     return 0;
 }
 
-static int32_t cloud_vfs_rmdir(vfs_file_t *fp, const char *path) {
+static int32_t cloud_vfs_rmdir(vfs_file_t *fp, const char *path) 
+{
     std::string name = path;
     if (name == "/cloud") {
         if (cloud_fs_oss_deleteDir(const_cast<char*>(name.c_str()), NULL, 1) < 0 ) {
@@ -594,7 +601,8 @@ void cloud_fs_dir_sync() {
     return;
 }
 
-void cloud_fs_sync_all() {
+void cloud_fs_sync_all() 
+{
     //遍历fp_timer_map，将每一个正在上传的文件的延迟时间全部重置为0，直接上传
     for (unordered_map<int*, Timer*>::iterator it = fp_timer_map.begin(); it != fp_timer_map.end(); it++) {
         Timer* timer = it->second;
